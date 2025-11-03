@@ -17,8 +17,12 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 #include <cmath>
 #include <cstdint>
+#include <string>
+#include <cstring>
 
 extern "C" {
 #include "main.h"
@@ -31,15 +35,14 @@ extern "C" {
 #include "pid_controller.hpp"
 #include "position_controller.hpp"
 #include "speed_controller.hpp"
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #define PWM_MAX 999
-
+#define RX_BUFFER_SIZE 64
+#define UART_RECEIVE_TIMEOUT 1
+#define UART_SEND_TIMEOUT 50
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -53,8 +56,11 @@ extern "C" {
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN PV */
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+UART_HandleTypeDef huart2;
 
 // -----------------------------------------
 // Hardware-Setup
@@ -68,18 +74,17 @@ DCMotor dc_motor(motorDriver, encoder);
 // -----------------------------------------
 PositionController position_controller(0.02,0.0,0.0);
 
-
-/* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN PFP */
+
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
-/* USER CODE BEGIN PFP */
-
+static void MX_USART2_UART_Init(void);
+void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -118,7 +123,9 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -129,6 +136,10 @@ int main(void)
 
   const float dt = 0.01f; // Loopzeit in Sekunden (10 ms)
   position_controller.target_position = -15000.0f; // Zielposition in Encoder-Ticks
+
+  uint8_t rxBuffer[RX_BUFFER_SIZE];
+  uint8_t rxIndex = 0;
+  uint8_t ch;
 
   /* USER CODE END 2 */
 
@@ -147,8 +158,73 @@ int main(void)
       dc_motor.setOutput(controlSignal);
 
       HAL_Delay(10);
+
+      //const char *msg = "Hello from C++!\r\n";
+      //HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), UART_TIMEOUT);
+
+      if (HAL_UART_Receive(&huart2, &ch, 1, UART_RECEIVE_TIMEOUT) == HAL_OK)
+	 {
+		 if (ch == '\r' || ch == '\n')
+		 {
+			 rxBuffer[rxIndex] = '\0'; // String terminieren
+			 int value = std::atoi((char*)rxBuffer);
+
+			 char msg[64];
+			 std::sprintf(msg, "\r\nEmpfangen: %d. Aktuell: %d\r\n", value, encoder.getCurrentValue());
+			 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
+
+			 rxIndex = 0; // Buffer leeren
+
+			 position_controller.target_position = value;
+		 }
+		 else if (rxIndex < RX_BUFFER_SIZE - 1)
+		 {
+			 rxBuffer[rxIndex++] = ch;
+		 }
+	 }
+
   }
   /* USER CODE END 3 */
+}
+
+void UART_SEND(UART_HandleTypeDef *huart, char buffer[])
+{
+	HAL_UART_Transmit(huart, (uint8_t*)buffer, strlen(buffer), UART_SEND_TIMEOUT);
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
 }
 
 /**
