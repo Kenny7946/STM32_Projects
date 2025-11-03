@@ -1,0 +1,13 @@
+# Build-Verzeichnisse
+Debug/
+Release/
+.metadata/
+# IDE-Dateien
+*.launch
+*.cproject
+*.project
+.settings/
+
+# CubeMX Backup
+*.ioc.bak
+
