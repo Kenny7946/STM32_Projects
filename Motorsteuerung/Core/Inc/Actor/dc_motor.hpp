@@ -13,21 +13,17 @@
 #include "motor_driver.hpp"
 
 class DCMotor {
-private:
-    MotorDriver& driver;
-    Encoder& encoder;
-
-    float currentSpeed;
-    float currentPosition;
-
 public:
     DCMotor(MotorDriver& driver, Encoder& encoder);
 
-    void update(float dt);
     void setOutput(float value);
 
-    float getSpeed() const;
-    float getPosition() const;
+    int32_t getSpeed() const;
+    int32_t getPosition() const;
+
+private:
+    MotorDriver& driver;
+    Encoder& encoder;
 };
 
 

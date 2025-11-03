@@ -9,22 +9,15 @@
 #include "dc_motor.hpp"
 
 DCMotor::DCMotor(MotorDriver& driver, Encoder& encoder)
-    : driver(driver), encoder(encoder), currentSpeed(0), currentPosition(0)
+    : driver(driver), encoder(encoder)
 {}
-
-void DCMotor::update(float dt)
-{
-    encoder.update();
-    currentSpeed = encoder.getSpeed(dt);
-    currentPosition = static_cast<float>(encoder.getTotalCount());
-}
 
 void DCMotor::setOutput(float value)
 {
     driver.setOutput(value);
 }
 
-float DCMotor::getSpeed() const { return currentSpeed; }
-float DCMotor::getPosition() const { return currentPosition; }
+int32_t DCMotor::getSpeed() const { return 0; }
+int32_t DCMotor::getPosition() const { return encoder.getCurrentValue(); }
 
 

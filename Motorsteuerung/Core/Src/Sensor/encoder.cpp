@@ -7,38 +7,14 @@
 
 #include <encoder.hpp>
 
-Encoder::Encoder(TIM_HandleTypeDef* htim, uint16_t maxCount)
-    : htim(htim), lastCount(0), totalCount(0), maxCount(maxCount)
+Encoder::Encoder(TIM_HandleTypeDef* handle_timer_)
+    : handle_timer(handle_timer_)
 {
-    lastCount = __HAL_TIM_GET_COUNTER(htim);
 }
 
-void Encoder::update()
+int32_t Encoder::getCurrentValue() const
 {
-    int32_t count = __HAL_TIM_GET_COUNTER(htim);
-    int32_t delta = count - lastCount;
-
-    // Überlaufkorrektur
-    if (delta > (maxCount / 2)) delta -= maxCount;
-    else if (delta < -(maxCount / 2)) delta += maxCount;
-
-    totalCount += delta;
-    lastCount = count;
+	return (int32_t) __HAL_TIM_GET_COUNTER(handle_timer);
 }
-
-int32_t Encoder::getTotalCount() const
-{
-    return totalCount;
-}
-
-float Encoder::getSpeed(float dt)
-{
-    static int32_t lastTotal = 0;
-    int32_t currentTotal = totalCount;
-    int32_t delta = currentTotal - lastTotal;
-    lastTotal = currentTotal;
-    return delta / dt;
-}
-
 
 

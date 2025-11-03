@@ -16,15 +16,15 @@ extern "C" {
 
 class MotorDriver {
 private:
-    TIM_HandleTypeDef* htim;
+    TIM_HandleTypeDef* handle_timer;
     uint32_t channel;
-    GPIO_TypeDef* dirPort;
-    uint16_t dirPin;
-    uint16_t pwmMax;
+    GPIO_TypeDef* dir_port;
+    uint16_t dir_pin;
+    uint16_t pwm_max;
 
 public:
-    MotorDriver(TIM_HandleTypeDef* htim, uint32_t channel,
-                GPIO_TypeDef* dirPort, uint16_t dirPin, uint16_t pwmMax = 999);
+    MotorDriver(TIM_HandleTypeDef* handle_timer, uint32_t channel,
+                GPIO_TypeDef* dir_port, uint16_t dir_pin, uint16_t pwm_max = 999);
 
     void setOutput(float value);
 };

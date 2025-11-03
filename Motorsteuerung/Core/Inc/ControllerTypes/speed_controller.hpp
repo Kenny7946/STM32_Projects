@@ -1,15 +1,14 @@
 /*
- * SpeedController.hpp
+ * speed_controller.hpp
  *
  *  Created on: Nov 3, 2025
  *      Author: marku
  */
 
-#ifndef INC_CONTROLLER_SPEEDCONTROLLER_HPP_
-#define INC_CONTROLLER_SPEEDCONTROLLER_HPP_
+#ifndef CORE_INC_CONTROLLERTYPES_SPEED_CONTROLLER_HPP_
+#define CORE_INC_CONTROLLERTYPES_SPEED_CONTROLLER_HPP_
 
-#include <PIDController.hpp>
-#include <SpeedController.hpp>
+#include "pid_controller.hpp"
 
 class SpeedController : public PIDController {
 private:
@@ -26,5 +25,4 @@ public:
 };
 
 
-
-#endif /* INC_CONTROLLER_SPEEDCONTROLLER_HPP_ */
+#endif /* CORE_INC_CONTROLLERTYPES_SPEED_CONTROLLER_HPP_ */

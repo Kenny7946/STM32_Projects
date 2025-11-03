@@ -17,8 +17,20 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <cmath>
+#include <cstdint>
+
+extern "C" {
 #include "main.h"
-#include <math.h>
+#include "stm32l4xx_hal.h"
+}
+
+#include "dc_motor.hpp"
+#include "motor_driver.hpp"
+#include "encoder.hpp"
+#include "pid_controller.hpp"
+#include "position_controller.hpp"
+#include "speed_controller.hpp"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -44,6 +56,19 @@
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
+// -----------------------------------------
+// Hardware-Setup
+// -----------------------------------------
+MotorDriver motorDriver(&htim1, TIM_CHANNEL_1, GPIOB, GPIO_PIN_5);
+Encoder encoder(&htim2);
+DCMotor dc_motor(motorDriver, encoder);
+
+// -----------------------------------------
+// PID-Regler
+// -----------------------------------------
+PositionController position_controller(0.02,0.0,0.0);
+
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -59,13 +84,6 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-float Kp = 2.0f;
-float Ki = 0.00f;
-float Kd = 0.0002f;
-
-// Zielposition (Encoder-Ticks)
-int32_t setpoint = 5000; // Ziel: 5000 Ticks
 
 /* USER CODE END 0 */
 
@@ -106,22 +124,11 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
 
-  /*int32_t position = 0;
-  int32_t last_position = 0;
-  int32_t error = 0;
-  int32_t last_error = 0;
-  float integral = 0;*/
-  // Regelintervall in Millisekunden
-  #define DT_MS 10
-  #define DT_SEC (DT_MS / 1000.0f)
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
-  // Zielgeschwindigkeit in Encoder-Ticks pro Sekunde
-  float target_speed =12000.0f;
-
-  // interne Zustände
-  float integral = 0.0f;
-  float last_error = 0.0f;
-  int32_t last_position = 0;
+  const float dt = 0.01f; // Loopzeit in Sekunden (10 ms)
+  position_controller.target_position = -15000.0f; // Zielposition in Encoder-Ticks
 
   /* USER CODE END 2 */
 
@@ -132,80 +139,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-      /*position = (int32_t)__HAL_TIM_GET_COUNTER(&htim2);
 
-      // Fehler berechnen
-      error = -(setpoint - position);
+      int32_t currentPos = -encoder.getCurrentValue();
 
-      // Integralanteil aufsummieren
-      integral += error;
+      float controlSignal = position_controller.update(currentPos, dt);
 
-      // Differenzialanteil
-      int32_t derivative = error - last_error;
+      dc_motor.setOutput(controlSignal);
 
-      // PID-Gleichung
-      float output = Kp * error + Ki * integral + Kd * derivative;
-
-      // Begrenzung (Anti-Windup)
-      if (output > PWM_MAX) output = PWM_MAX;
-      if (output < -PWM_MAX) output = -PWM_MAX;
-
-      // Richtung setzen
-      if (output >= 0)
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET); // Vorwärts
-      else
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);   // Rückwärts
-
-      // PWM setzen
-      if(fabsf(output) < 80)
-      {
-    	  output = 0;
-      }
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, fabsf(output));
-
-      // Alte Werte speichern
-      last_error = error;
-      last_position = position;
-
-      HAL_Delay(10); // 10 ms Zykluszeit (100 Hz)*/
-
-	  int32_t position = -(int32_t)__HAL_TIM_GET_COUNTER(&htim2);
-	 int32_t delta = position - last_position;
-
-	 // Überlaufkorrektur (16-Bit-Encoder)
-	 if (delta > 32767) delta -= 65536;
-	 else if (delta < -32768) delta += 65536;
-
-	 // --- Aktuelle Geschwindigkeit berechnen (Ticks/s) ---
-	 float speed = delta / DT_SEC;
-
-	 // --- PID-Regelung ---
-	 float error = target_speed - speed;
-
-	 integral += error * DT_SEC;
-	 float derivative = (error - last_error) / DT_SEC;
-
-	 float output = Kp * error + Ki * integral + Kd * derivative;
-
-	 // --- Begrenzen ---
-	 if (output > PWM_MAX) output = PWM_MAX;
-	 if (output < -PWM_MAX) output = -PWM_MAX;
-
-	 // --- Richtung ---
-	 if (output >= 0)
-		 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET); // Vorwärts
-	 else
-		 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);   // Rückwärts
-
-	 // --- PWM setzen ---
-	 __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, fabsf(output));
-
-	 // --- Vorbereiten für nächsten Zyklus ---
-	 last_position = position;
-	 last_error = error;
-
-	 HAL_Delay(DT_MS);
-
+      HAL_Delay(10);
   }
   /* USER CODE END 3 */
 }

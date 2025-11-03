@@ -1,22 +1,22 @@
 /*
- * PIDController.cpp
+ * pid_controller.cpp
  *
  *  Created on: Nov 3, 2025
  *      Author: marku
  */
 
-#include <PIDController.hpp>
+#include "pid_controller.hpp"
 
 PIDController::PIDController(float kp, float ki, float kd)
     : Kp(kp), Ki(ki), Kd(kd), integral(0.0f), lastError(0.0f)
 {}
 
-float PIDController::compute(float setpoint, float measurement, float dt)
+float PIDController::compute(int32_t setpoint, int32_t measurement, float dt)
 {
-    float error = setpoint - measurement;
+    int32_t error = setpoint - measurement;
 
-    integral += error * dt;
-    float derivative = (error - lastError) / dt;
+    integral += (float)error * dt;
+    float derivative = float(error - lastError) / dt;
     lastError = error;
 
     return Kp * error + Ki * integral + Kd * derivative;
@@ -27,5 +27,6 @@ void PIDController::reset()
     integral = 0.0f;
     lastError = 0.0f;
 }
+
 
 
