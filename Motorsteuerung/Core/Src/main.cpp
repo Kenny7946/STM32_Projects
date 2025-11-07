@@ -41,7 +41,7 @@ extern "C" {
 /* USER CODE BEGIN PTD */
 #define PWM_MAX 999
 #define RX_BUFFER_SIZE 64
-#define UART_RECEIVE_TIMEOUT 1
+#define UART_RECEIVE_TIMEOUT 50
 #define UART_SEND_TIMEOUT 50
 /* USER CODE END PTD */
 
@@ -72,7 +72,7 @@ DCMotor dc_motor(motorDriver, encoder);
 // -----------------------------------------
 // PID-Regler
 // -----------------------------------------
-PositionController position_controller(0.02,0.0,0.0);
+PositionController position_controller(0.002,0.0000,0.0);
 
 /* USER CODE END PV */
 
@@ -89,7 +89,9 @@ void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t millis() {
+    return HAL_GetTick();   // Gibt ms seit HAL_Init() zurück
+}
 /* USER CODE END 0 */
 
 /**
@@ -135,11 +137,13 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   const float dt = 0.01f; // Loopzeit in Sekunden (10 ms)
-  position_controller.target_position = -15000.0f; // Zielposition in Encoder-Ticks
+  position_controller.target_position = 0.0f; // Zielposition in Encoder-Ticks
 
   uint8_t rxBuffer[RX_BUFFER_SIZE];
   uint8_t rxIndex = 0;
   uint8_t ch;
+
+  int32_t send_message_timer = 0;
 
   /* USER CODE END 2 */
 
@@ -151,7 +155,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-      int32_t currentPos = -encoder.getCurrentValue();
+      int32_t currentPos = encoder.getCurrentValue();
 
       float controlSignal = position_controller.update(currentPos, dt);
 
@@ -159,29 +163,27 @@ int main(void)
 
       HAL_Delay(10);
 
-      //const char *msg = "Hello from C++!\r\n";
-      //HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), UART_TIMEOUT);
+      int32_t time = millis();
 
-      if (HAL_UART_Receive(&huart2, &ch, 1, UART_RECEIVE_TIMEOUT) == HAL_OK)
-	 {
-		 if (ch == '\r' || ch == '\n')
-		 {
-			 rxBuffer[rxIndex] = '\0'; // String terminieren
-			 int value = std::atoi((char*)rxBuffer);
+      if(time - send_message_timer > 40)
+      {
+    	 send_message_timer = time;
+    	 char msg[64];
+		 //std::sprintf(msg, "\r\Time: %ld. Current: %ld. Target: %ld\r\n", time, currentPos, position_controller.target_position);
+    	 std::sprintf(msg, "%ld %ld\r\n", currentPos, position_controller.target_position);
+		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
+      }
 
-			 char msg[64];
-			 std::sprintf(msg, "\r\nEmpfangen: %d. Aktuell: %d\r\n", value, encoder.getCurrentValue());
-			 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
-
-			 rxIndex = 0; // Buffer leeren
-
-			 position_controller.target_position = value;
-		 }
-		 else if (rxIndex < RX_BUFFER_SIZE - 1)
-		 {
-			 rxBuffer[rxIndex++] = ch;
-		 }
-	 }
+      if (HAL_UART_Receive(&huart2, &ch, 1, UART_RECEIVE_TIMEOUT) == HAL_OK) {
+          if (ch == '\n' || ch == '\r') {
+              rxBuffer[rxIndex] = '\0';
+              int value = atoi((char*)rxBuffer);
+              rxIndex = 0;
+              position_controller.target_position = value;
+          } else if (rxIndex < RX_BUFFER_SIZE - 1) {
+              rxBuffer[rxIndex++] = ch;
+          }
+      }
 
   }
   /* USER CODE END 3 */
