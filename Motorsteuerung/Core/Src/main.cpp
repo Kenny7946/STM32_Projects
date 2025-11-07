@@ -41,7 +41,7 @@ extern "C" {
 /* USER CODE BEGIN PTD */
 #define PWM_MAX 999
 #define RX_BUFFER_SIZE 64
-#define UART_RECEIVE_TIMEOUT 50
+#define UART_RECEIVE_TIMEOUT 10
 #define UART_SEND_TIMEOUT 50
 /* USER CODE END PTD */
 
@@ -72,7 +72,7 @@ DCMotor dc_motor(motorDriver, encoder);
 // -----------------------------------------
 // PID-Regler
 // -----------------------------------------
-PositionController position_controller(0.002,0.0000,0.0);
+PositionController position_controller(0.0013,0.0,0.0);
 
 /* USER CODE END PV */
 
@@ -144,6 +144,7 @@ int main(void)
   uint8_t ch;
 
   int32_t send_message_timer = 0;
+  int32_t update_pid_controller_timer = 0;
 
   /* USER CODE END 2 */
 
@@ -154,23 +155,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  int32_t time = millis();
+	  int32_t currentPos = encoder.getCurrentValue();
+      if(time - update_pid_controller_timer >= 10)
+      {
+    	  float controlSignal = position_controller.update(currentPos, (float)(time - update_pid_controller_timer) / 1000.0f);
+    	  dc_motor.setOutput(controlSignal);
+    	  update_pid_controller_timer = time;
+      }
 
-      int32_t currentPos = encoder.getCurrentValue();
 
-      float controlSignal = position_controller.update(currentPos, dt);
-
-      dc_motor.setOutput(controlSignal);
-
-      HAL_Delay(10);
-
-      int32_t time = millis();
 
       if(time - send_message_timer > 40)
       {
     	 send_message_timer = time;
     	 char msg[64];
 		 //std::sprintf(msg, "\r\Time: %ld. Current: %ld. Target: %ld\r\n", time, currentPos, position_controller.target_position);
-    	 std::sprintf(msg, "%ld %ld\r\n", currentPos, position_controller.target_position);
+    	 std::sprintf(msg, "%ld %ld 0 12000\r\n", currentPos, position_controller.target_position);
 		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
       }
 
@@ -178,6 +179,7 @@ int main(void)
           if (ch == '\n' || ch == '\r') {
               rxBuffer[rxIndex] = '\0';
               int value = atoi((char*)rxBuffer);
+              value *= 100;
               rxIndex = 0;
               position_controller.target_position = value;
           } else if (rxIndex < RX_BUFFER_SIZE - 1) {
@@ -210,7 +212,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 9600;
+  huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;

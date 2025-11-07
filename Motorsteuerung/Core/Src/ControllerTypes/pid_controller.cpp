@@ -16,10 +16,14 @@ float PIDController::compute(int32_t setpoint, int32_t measurement, float dt)
     int32_t error = setpoint - measurement;
 
     integral += (float)error * dt;
-    float derivative = float(error - lastError) / dt;
+    float derivative = (float)(error - lastError) / dt;
     lastError = error;
 
-    return Kp * error + Ki * integral + Kd * derivative;
+    float p = Kp * error;
+    float i = Ki * integral;
+    float d = Kd * derivative;
+
+    return p + i + d;
 }
 
 void PIDController::reset()
