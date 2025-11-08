@@ -8,6 +8,7 @@
 #ifndef INC_HAL_INCLUDE_HPP_
 #define INC_HAL_INCLUDE_HPP_
 
+#define PWM_MAX 49
 
 extern "C" {
 #include "stm32l4xx_hal.h"

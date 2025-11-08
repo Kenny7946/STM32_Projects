@@ -24,7 +24,7 @@ private:
 
 public:
     MotorDriver(TIM_HandleTypeDef* handle_timer, uint32_t channel,
-                GPIO_TypeDef* dir_port, uint16_t dir_pin, uint16_t pwm_max = 999);
+                GPIO_TypeDef* dir_port, uint16_t dir_pin, uint16_t pwm_max = PWM_MAX);
 
     void setOutput(float value);
 };
