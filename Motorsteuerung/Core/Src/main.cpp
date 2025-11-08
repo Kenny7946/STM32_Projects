@@ -168,12 +168,13 @@ int main(void)
     	  float time_diff = (float)(time - update_pid_controller_timer) / 1000.0f;
     	  update_pid_controller_timer = time;
 
-    	  //float controlSignal = position_controller.update(currentPos, (float)(time - update_pid_controller_timer) / 1000.0f);
+    	  //float controlSignal = position_controller.update(currentPos, time_diff);
     	  float controlSignal = speed_controller.update(motor_speed_rps, time_diff);
 
     	  dc_motor.setOutput(controlSignal);
 
      	 char msg[64];
+     	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 

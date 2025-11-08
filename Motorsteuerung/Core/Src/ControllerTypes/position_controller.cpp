@@ -13,7 +13,7 @@ PositionController::PositionController(float kp, float ki, float kd)
 
 int32_t PositionController::update(int32_t measured_position, float dt)
 {
-    return compute(target_position, measured_position, dt);
+    return compute((float) target_position, (float)measured_position, dt);
 }
 
 
