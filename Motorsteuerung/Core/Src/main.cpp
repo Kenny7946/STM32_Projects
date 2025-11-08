@@ -63,9 +63,6 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
-uint32_t last_count = 0;
-uint32_t last_time = 0;
-float motor_speed_rps = 0; // Umdrehungen pro Sekunde
 
 // -----------------------------------------
 // Hardware-Setup
@@ -90,7 +87,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
-void update_motor_speed();
+float get_motor_speed();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -168,7 +165,7 @@ int main(void)
 	  int32_t currentPos = encoder.getCurrentValue();
       if(time - update_pid_controller_timer >= 10)
       {
-    	  update_motor_speed();
+    	  float motor_speed_rps = get_motor_speed();
 
     	  //float controlSignal = position_controller.update(currentPos, (float)(time - update_pid_controller_timer) / 1000.0f);
 
@@ -184,21 +181,10 @@ int main(void)
     	  update_pid_controller_timer = time;
       }
 
-      update_motor_speed();
-
 
 
       if(time - send_message_timer > 40)
       {
-    	 send_message_timer = time;
-    	 char msg[64];
-
-
-		 //std::sprintf(msg, "\r\Time: %ld. Current: %ld. Target: %ld\r\n", time, currentPos, position_controller.target_position);
-    	 //std::sprintf(msg, "%ld %ld 0 12000\r\n", currentPos, position_controller.target_positif;f;
-    	 //std::sprintf(msg, "%ld % %ldld\r\n", time, (int32_t)motor_speed_rps * 1000.0, (int32_t)controlSignal * 1000.0f0f);
-
-		 //HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
       }
 
       if (HAL_UART_Receive(&huart2, &ch, 1, UART_RECEIVE_TIMEOUT) == HAL_OK) {
@@ -223,7 +209,12 @@ void UART_SEND(UART_HandleTypeDef *huart, char buffer[])
 	HAL_UART_Transmit(huart, (uint8_t*)buffer, strlen(buffer), UART_SEND_TIMEOUT);
 }
 
-void update_motor_speed() {
+float get_motor_speed() {
+	static uint32_t last_count = 0;
+	static uint32_t last_time = 0;
+	static float velocity = 0.0f;
+	static float motor_speed_rps_last_time = 0.0f;
+
 	uint32_t now = millis();
 	uint32_t count = __HAL_TIM_GET_COUNTER(&htim2);
 	int32_t diff = (int32_t)(count - last_count);
@@ -231,10 +222,18 @@ void update_motor_speed() {
 	if (diff > 32768) diff -= 65536;
 	if (diff < -32768) diff += 65536;
 
-	motor_speed_rps = (float)diff / ENCODER_RESOLUTION / ((now - last_time) / 1000.0f);
+	int32_t motor_speed_ticks_per_second =  (float)(diff / ((now - last_time) / 1000.0f));
+	float motor_speed_rps = (float)((float)motor_speed_ticks_per_second / ENCODER_RESOLUTION);
 
+	// Tiefpassfilter
+	velocity = 0.5f * velocity + 0.25f * motor_speed_rps + 0.25f * motor_speed_rps_last_time;
+
+
+	motor_speed_rps_last_time = motor_speed_rps;
 	last_count = count;
 	last_time = now;
+
+	return velocity;
 }
 
 /**
