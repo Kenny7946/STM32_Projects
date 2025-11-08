@@ -13,7 +13,9 @@ SpeedController::SpeedController(float kp, float ki, float kd)
 
 void SpeedController::setTargetSpeed(float speed)
 {
+	const static float maxVel = 1.3f;
     targetSpeed = speed;
+	targetSpeed = targetSpeed < -maxVel ? -maxVel : targetSpeed > maxVel ? maxVel : targetSpeed;
 }
 
 float SpeedController::getTargetSpeed() const

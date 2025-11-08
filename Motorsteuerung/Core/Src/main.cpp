@@ -162,15 +162,15 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  int32_t time = millis();
-	  int32_t currentPos = encoder.getCurrentValue();
       if(time - update_pid_controller_timer >= 10)
       {
+    	  int32_t currentPos = encoder.getCurrentValue();
     	  float motor_speed_rps = get_motor_speed();
+    	  float time_diff = (float)(time - update_pid_controller_timer) / 1000.0f;
+    	  update_pid_controller_timer = time;
 
     	  //float controlSignal = position_controller.update(currentPos, (float)(time - update_pid_controller_timer) / 1000.0f);
-
-    	  float time_diff = (float)(time - update_pid_controller_timer) / 1000.0f;
-    	  float controlSignal = -speed_controller.update(-motor_speed_rps, time_diff);
+    	  float controlSignal = speed_controller.update(motor_speed_rps, time_diff);
 
     	  dc_motor.setOutput(controlSignal);
 
@@ -178,7 +178,7 @@ int main(void)
      	 std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
-    	  update_pid_controller_timer = time;
+
       }
 
 
