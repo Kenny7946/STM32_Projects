@@ -24,6 +24,8 @@ float SpeedController::getTargetSpeed() const
 float SpeedController::update(float measuredSpeed, float dt)
 {
     currentSpeed = measuredSpeed;
+
+
     return compute(targetSpeed, currentSpeed, dt);
 }
 

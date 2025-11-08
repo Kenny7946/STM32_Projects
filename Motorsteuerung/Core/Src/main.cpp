@@ -43,6 +43,7 @@ extern "C" {
 #define RX_BUFFER_SIZE 64
 #define UART_RECEIVE_TIMEOUT 10
 #define UART_SEND_TIMEOUT 50
+#define ENCODER_RESOLUTION 8384   // Impulse pro Umdrehung
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -62,6 +63,10 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
+uint32_t last_count = 0;
+uint32_t last_time = 0;
+float motor_speed_rps = 0; // Umdrehungen pro Sekunde
+
 // -----------------------------------------
 // Hardware-Setup
 // -----------------------------------------
@@ -73,7 +78,7 @@ DCMotor dc_motor(motorDriver, encoder);
 // PID-Regler
 // -----------------------------------------
 PositionController position_controller(0.0013,0.0,0.0);
-
+SpeedController speed_controller(0.0,4.0,0.0);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,6 +90,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
+void update_motor_speed();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -137,7 +143,10 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   const float dt = 0.01f; // Loopzeit in Sekunden (10 ms)
+  float target_speed = 0.0f;
+
   position_controller.target_position = 0.0f; // Zielposition in Encoder-Ticks
+  speed_controller.setTargetSpeed(target_speed);
 
   uint8_t rxBuffer[RX_BUFFER_SIZE];
   uint8_t rxIndex = 0;
@@ -159,10 +168,23 @@ int main(void)
 	  int32_t currentPos = encoder.getCurrentValue();
       if(time - update_pid_controller_timer >= 10)
       {
-    	  float controlSignal = position_controller.update(currentPos, (float)(time - update_pid_controller_timer) / 1000.0f);
+    	  update_motor_speed();
+
+    	  //float controlSignal = position_controller.update(currentPos, (float)(time - update_pid_controller_timer) / 1000.0f);
+
+    	  float time_diff = (float)(time - update_pid_controller_timer) / 1000.0f;
+    	  float controlSignal = -speed_controller.update(-motor_speed_rps, time_diff);
+
     	  dc_motor.setOutput(controlSignal);
+
+     	 char msg[64];
+     	 std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
+ 		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
+
     	  update_pid_controller_timer = time;
       }
+
+      update_motor_speed();
 
 
 
@@ -170,18 +192,23 @@ int main(void)
       {
     	 send_message_timer = time;
     	 char msg[64];
+
+
 		 //std::sprintf(msg, "\r\Time: %ld. Current: %ld. Target: %ld\r\n", time, currentPos, position_controller.target_position);
-    	 std::sprintf(msg, "%ld %ld 0 12000\r\n", currentPos, position_controller.target_position);
-		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
+    	 //std::sprintf(msg, "%ld %ld 0 12000\r\n", currentPos, position_controller.target_positif;f;
+    	 //std::sprintf(msg, "%ld % %ldld\r\n", time, (int32_t)motor_speed_rps * 1000.0, (int32_t)controlSignal * 1000.0f0f);
+
+		 //HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
       }
 
       if (HAL_UART_Receive(&huart2, &ch, 1, UART_RECEIVE_TIMEOUT) == HAL_OK) {
           if (ch == '\n' || ch == '\r') {
               rxBuffer[rxIndex] = '\0';
               int value = atoi((char*)rxBuffer);
-              value *= 100;
+              value *= 1;
               rxIndex = 0;
-              position_controller.target_position = value;
+              //position_controller.target_position = value;
+              speed_controller.setTargetSpeed((float)(value / 10.0f));
           } else if (rxIndex < RX_BUFFER_SIZE - 1) {
               rxBuffer[rxIndex++] = ch;
           }
@@ -194,6 +221,20 @@ int main(void)
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[])
 {
 	HAL_UART_Transmit(huart, (uint8_t*)buffer, strlen(buffer), UART_SEND_TIMEOUT);
+}
+
+void update_motor_speed() {
+	uint32_t now = millis();
+	uint32_t count = __HAL_TIM_GET_COUNTER(&htim2);
+	int32_t diff = (int32_t)(count - last_count);
+
+	if (diff > 32768) diff -= 65536;
+	if (diff < -32768) diff += 65536;
+
+	motor_speed_rps = (float)diff / ENCODER_RESOLUTION / ((now - last_time) / 1000.0f);
+
+	last_count = count;
+	last_time = now;
 }
 
 /**

@@ -18,7 +18,7 @@ public:
 
     virtual ~PIDController() = default;
 
-    virtual float compute(int32_t setpoint, int32_t measurement, float dt);
+    virtual float compute(float setpoint, float measurement, float dt);
     void reset();
 
 protected:
