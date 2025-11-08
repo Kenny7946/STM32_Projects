@@ -29,7 +29,7 @@ PLATFORM DEPENDENCE
 Embodied in 3 functions related to I2C reading/writing
 
 */
-
+#include "hal_include.hpp"
 #include "Autofox_INA226.h"
 #include <math.h>
 #if defined(__AVR__)
@@ -57,9 +57,11 @@ AutoFox_INA226::AutoFox_INA226()
 }
 
 //----------------------------------------------------------------------------
-status AutoFox_INA226::Init(uint8_t aI2C_Address, double aShuntResistor_Ohms, double aMaxCurrent_Amps)
+status AutoFox_INA226::Init(I2C_HandleTypeDef* i2c_typedef_, uint8_t aI2C_Address, double aShuntResistor_Ohms, double aMaxCurrent_Amps)
 {
 	mInitialized = false;
+
+	i2c_typedef = i2c_typedef_;
 
 	//Check if there's a device (any I2C device) at the specified address.
 	CALL_FN( CheckI2cAddress(aI2C_Address) );
@@ -132,6 +134,17 @@ status AutoFox_INA226::CheckI2cAddress(uint8_t aI2C_Address)
 		return OK;
 	}
 #endif
+
+    HAL_StatusTypeDef result;
+
+    // Versuche ein "leeres" Write mit 0 Bytes — das entspricht Wire.beginTransmission + endTransmission
+    result = HAL_I2C_Master_Transmit(i2c_typedef, aI2C_Address, NULL, 0, 100);
+
+    if (result == HAL_OK)
+        return OK;
+    else
+        return INVALID_I2C_ADDRESS;
+
 	return INVALID_I2C_ADDRESS;
 }
 
@@ -149,6 +162,21 @@ status AutoFox_INA226::ReadRegister(uint8_t aRegister, uint16_t& aValue)
 		return OK;
 	}
 #endif
+    //TEMP
+	uint8_t rxData[2];
+
+    // Sag dem INA226, welches Register gelesen werden soll
+    if (HAL_I2C_Master_Transmit(i2c_typedef, mI2C_Address, &aRegister, 1, 100) != HAL_OK)
+        return FAIL;
+
+    // Jetzt 2 Byte vom INA226 lesen
+    if (HAL_I2C_Master_Receive(i2c_typedef, mI2C_Address, rxData, 2, 100) != HAL_OK)
+        return FAIL;
+
+    // Bytes zusammensetzen (MSB zuerst)
+    aValue = ((uint16_t)rxData[0] << 8) | rxData[1];
+    return OK;
+    //END_TEMP
 	return FAIL;
 }
 
@@ -163,6 +191,17 @@ status AutoFox_INA226::WriteRegister(uint8_t aRegister, uint16_t aValue)
 	theBytesWriten += Wire.write(aValue & 0xFF);      
 	Wire.endTransmission();
 #endif
+	//TEMP
+    uint8_t txData[3];
+    txData[0] = aRegister;
+    txData[1] = (aValue >> 8) & 0xFF;
+    txData[2] = aValue & 0xFF;
+
+    if (HAL_I2C_Master_Transmit(i2c_typedef, mI2C_Address, txData, 3, 100) != HAL_OK)
+        return FAIL;
+
+    return OK;
+	//END_TEMP
 	return (theBytesWriten==3) ? OK : FAIL;
 }
 //----------------------------------------------------------------------------

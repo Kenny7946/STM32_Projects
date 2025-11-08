@@ -85,7 +85,7 @@ public:
     AutoFox_INA226();
 
     //Resets the INA226 and configures it according to the supplied parameters - should be called first.
-    status Init(uint8_t aI2C_Address=0x40, double aShuntResistor_Ohms=0.1, double aMaxCurrent_Amps=3.2767);
+    status Init(I2C_HandleTypeDef* i2c_typedef_, uint8_t aI2C_Address=0x40, double aShuntResistor_Ohms=0.1, double aMaxCurrent_Amps=3.2767);
 
     int32_t GetShuntVoltage_uV();
     int32_t GetBusVoltage_uV();
@@ -115,6 +115,7 @@ protected:
     uint16_t mCalibrationValue;        //local copy from the INA226
     int32_t  mCurrentMicroAmpsPerBit; //This is the Current_LSB, as defined in the INA266 spec
     int32_t  mPowerMicroWattPerBit;
+    I2C_HandleTypeDef* i2c_typedef;
 
 protected:
     status CheckI2cAddress(uint8_t aI2C_Address);
