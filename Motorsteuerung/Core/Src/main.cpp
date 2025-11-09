@@ -181,14 +181,32 @@ int main(void)
 	  __NOP();
   }
 
-  float voltage = INA.getBusVoltage_mV();
-  if(voltage != 0.0f)
+  float shunt = 0.118f;
+  float current_LSB_mA = 2.5f;
+  float current_zero_offset_mA = 0;
+  uint16_t bus_V_scaling_e4 = 9872;
+
+  int configure = INA.configure(shunt, current_LSB_mA, current_zero_offset_mA, bus_V_scaling_e4);
+  if(configure)
+  {
+	  __NOP();
+  }
+  else
   {
 	  __NOP();
   }
 
 
   HAL_Delay(10);
+
+
+  // Globale oder statische Variablen für den gefilterten Wert
+  static float filtered_voltage = 0.0f;
+  static float filtered_current = 0.0f;
+
+  // Filterkonstante (je kleiner, desto träger, z. B. 0.05 für starkes Filtern)
+  const float alpha_voltage = 0.5f;
+  const float alpha_current = 0.3f;
 
 
 
@@ -214,18 +232,21 @@ int main(void)
 
     	  dc_motor.setOutput(controlSignal);
 
-    	  float voltage = INA.getBusVoltage_mV() * 1000.0f;
-    	  if(voltage != 0.0f)
-    	  {
-    		  __NOP();
-    	  }
+    	    // Messwerte vom INA226 lesen
+    	    float voltage_raw = INA.getBusVoltage_mV() / 1000.0f;
+    	    float current_raw = INA.getCurrent_mA();
+
+    	    // Tiefpassfilter anwenden
+    	    filtered_voltage = alpha_voltage * voltage_raw + (1.0f - alpha_voltage) * filtered_voltage;
+    	    filtered_current = alpha_current * current_raw + (1.0f - alpha_current) * filtered_current;
 
 
 
      	 char msg[64];
      	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
-     	std::sprintf(msg, "%ld %f\r\n", time, (voltage));
+     	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
+     	std::sprintf(msg, "%.3fV %.3f\r\n", filtered_voltage, filtered_current);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
