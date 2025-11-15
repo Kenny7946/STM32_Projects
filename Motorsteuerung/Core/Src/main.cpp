@@ -35,7 +35,6 @@ extern "C" {
 #include "pid_controller.hpp"
 #include "position_controller.hpp"
 #include "speed_controller.hpp"
-#include <Autofox_INA226.h>
 #include <INA226.h>
 /* USER CODE END Includes */
 
@@ -61,16 +60,17 @@ const double SHUNT_RESISTOR_OHMS = 0.1;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
-UART_HandleTypeDef huart2;
-I2C_HandleTypeDef hi2c1;
+#define SENSOR_ADDR 0x40
+//TIM_HandleTypeDef htim1;
+//TIM_HandleTypeDef htim2;
+//UART_HandleTypeDef huart2;
+//I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c2;
 
 // -----------------------------------------
 // Hardware-Setup
 // -----------------------------------------
-MotorDriver motorDriver(&htim1, TIM_CHANNEL_1, GPIOB, GPIO_PIN_5);
+/*MotorDriver motorDriver(&htim1, TIM_CHANNEL_1, GPIOB, GPIO_PIN_5);
 Encoder encoder(&htim2);
 DCMotor dc_motor(motorDriver, encoder);
 
@@ -78,8 +78,7 @@ DCMotor dc_motor(motorDriver, encoder);
 // PID-Regler
 // -----------------------------------------
 PositionController position_controller(0.0013,0.0,0.0);
-SpeedController speed_controller(0.0,4.0,0.0);
-AutoFox_INA226 ina226;
+SpeedController speed_controller(0.0,4.0,0.0);*/
 
 /* USER CODE END PV */
 
@@ -91,7 +90,8 @@ static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_I2C1_Init(void);
+//static void MX_I2C1_Init(void);
+static void MX_I2C2_Init(void);
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
 void I2C_SEND(uint8_t port, uint8_t data);
 float get_motor_speed();
@@ -133,13 +133,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_TIM1_Init();
-  MX_TIM2_Init();
-  MX_USART2_UART_Init();
-  MX_I2C1_Init();
+  //MX_TIM1_Init();
+  //MX_TIM2_Init();
+  //MX_USART2_UART_Init();
+  //MX_I2C1_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+  /*HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
@@ -160,7 +161,7 @@ int main(void)
   int32_t send_message_timer = 0;
   int32_t update_pid_controller_timer = 0;
 
-  HAL_I2C_StateTypeDef test = HAL_I2C_GetState(&hi2c1);
+  HAL_I2C_StateTypeDef test = HAL_I2C_GetState(&hi2c2);
   if(test == HAL_I2C_STATE_READY)
   {
 	  __NOP();
@@ -170,7 +171,7 @@ int main(void)
 	  __NOP();
   }
 
-  INA226 INA((0x40 << 1), &hi2c1);
+  INA226 INA((0x40 << 1), &hi2c2);
 
   if(INA.begin())
   {
@@ -206,10 +207,11 @@ int main(void)
 
   // Filterkonstante (je kleiner, desto träger, z. B. 0.05 für starkes Filtern)
   const float alpha_voltage = 0.5f;
-  const float alpha_current = 0.3f;
+  const float alpha_current = 0.3f;*/
 
 
-
+  uint8_t data;
+  data = 1234;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -217,9 +219,15 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  if(HAL_I2C_Mem_Read(&hi2c2, SENSOR_ADDR<<1, 0x0C, I2C_MEMADD_SIZE_8BIT, &data, 2, 1000) == HAL_OK){
+		  __NOP();
+	  } else {
+		 __NOP();
+	  }
+	  HAL_Delay(100);
 
     /* USER CODE BEGIN 3 */
-	  int32_t time = millis();
+/*	  int32_t time = millis();
       if(time - update_pid_controller_timer >= 10)
       {
     	  int32_t currentPos = encoder.getCurrentValue();
@@ -273,12 +281,12 @@ int main(void)
           } else if (rxIndex < RX_BUFFER_SIZE - 1) {
               rxBuffer[rxIndex++] = ch;
           }
-      }
+      }*/
 
   }
   /* USER CODE END 3 */
 }
-
+/*
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[])
 {
 	HAL_UART_Transmit(huart, (uint8_t*)buffer, strlen(buffer), UART_SEND_TIMEOUT);
@@ -290,7 +298,7 @@ void I2C_SEND(uint8_t port, uint8_t data)
 	uint8_t buff[size];
 	buff[0] = port;
 	buff[1] = data;
-	HAL_I2C_Master_Transmit(&hi2c1, INA226_IC2_ADDRESS, buff, size, 1000);
+	HAL_I2C_Master_Transmit(&hi2c2, INA226_IC2_ADDRESS, buff, size, 1000);
 }
 
 float get_motor_speed() {
@@ -319,7 +327,7 @@ float get_motor_speed() {
 
 	return velocity;
 }
-
+*/
 /**
   * @brief USART2 Initialization Function
   * @param None
@@ -335,6 +343,7 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 1 */
 
   /* USER CODE END USART2_Init 1 */
+	/*
   huart2.Instance = USART2;
   huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -349,6 +358,7 @@ static void MX_USART2_UART_Init(void)
   {
     Error_Handler();
   }
+  */
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
@@ -419,7 +429,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
+  /*htim1.Instance = TIM1;
   htim1.Init.Prescaler = 3;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = PWM_MAX;
@@ -471,11 +481,11 @@ static void MX_TIM1_Init(void)
   if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
   {
     Error_Handler();
-  }
+  }*/
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
-  HAL_TIM_MspPostInit(&htim1);
+  //HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -497,7 +507,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
+  /*htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 4294967295;
@@ -521,7 +531,7 @@ static void MX_TIM2_Init(void)
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
-  }
+  }*/
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
@@ -559,6 +569,7 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
+
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
@@ -573,36 +584,79 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 1 */
 
   /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00100D14;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  //hi2c1.Instance = I2C1;
+  //hi2c1.Init.Timing = 0x00100D14;
+  //hi2c1.Init.OwnAddress1 = 0;
+  //hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  //hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  //hi2c1.Init.OwnAddress2 = 0;
+  //hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  //hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  //hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  //if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  //{
+    //Error_Handler();
+  //}
+
+  /** Configure Analogue filter
+  */
+  //if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  //{
+    //Error_Handler();
+  //}
+
+  /** Configure Digital filter
+  */
+  //if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  //{
+    //Error_Handler();
+  //}
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x00100D14;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure Analogue filter
   */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
+  /* USER CODE BEGIN I2C2_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -616,6 +670,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  __NOP();
   while (1)
   {
   }

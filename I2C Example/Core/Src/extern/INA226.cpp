@@ -8,7 +8,9 @@
 //  Read the datasheet for the details
 
 
-#include "INA226.h"
+#include <INA226.hpp>
+
+uint32_t millis();
 
 //  REGISTERS
 #define INA226_CONFIGURATION              0x00
