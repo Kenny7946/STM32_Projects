@@ -65,6 +65,8 @@ AS5600::AS5600(I2C_HandleTypeDef* i2c_typedef_)
 bool AS5600::begin(uint8_t directionPin)
 {
   _directionPin = directionPin;
+
+  _address = (_address << 1);
   //if (_directionPin != AS5600_SW_DIRECTION_PIN)
   //{
   //  pinMode(_directionPin, OUTPUT);

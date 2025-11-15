@@ -36,6 +36,7 @@ extern "C" {
 #include "position_controller.hpp"
 #include "speed_controller.hpp"
 #include <INA226.h>
+#include <AS5600.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -200,6 +201,19 @@ int main(void)
 
   HAL_Delay(10);
 
+  AS5600 as5600(&hi2c2);
+
+  int connected = 0;
+  while(!connected)
+  {
+	  connected = as5600.begin();
+	  HAL_Delay(100);
+	  __NOP();
+  }
+  int magnet = as5600.detectMagnet();
+  int too_strong = as5600.magnetTooStrong();
+  int too_weak = as5600.magnetTooWeak();
+
 
   // Globale oder statische Variablen für den gefilterten Wert
   static float filtered_voltage = 0.0f;
@@ -248,13 +262,15 @@ int main(void)
     	    filtered_voltage = alpha_voltage * voltage_raw + (1.0f - alpha_voltage) * filtered_voltage;
     	    filtered_current = alpha_current * current_raw + (1.0f - alpha_current) * filtered_current;
 
+    	    float angle  = (float)(as5600.rawAngle() * AS5600_RAW_TO_DEGREES);
+
 
 
      	 char msg[64];
      	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
-     	std::sprintf(msg, "%.3fV %.3f\r\n", filtered_voltage, filtered_current);
+     	std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
