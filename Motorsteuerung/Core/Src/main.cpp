@@ -61,16 +61,16 @@ const double SHUNT_RESISTOR_OHMS = 0.1;
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 #define SENSOR_ADDR 0x40
-//TIM_HandleTypeDef htim1;
-//TIM_HandleTypeDef htim2;
-//UART_HandleTypeDef huart2;
-//I2C_HandleTypeDef hi2c1;
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
+UART_HandleTypeDef huart2;
+I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
 
 // -----------------------------------------
 // Hardware-Setup
 // -----------------------------------------
-/*MotorDriver motorDriver(&htim1, TIM_CHANNEL_1, GPIOB, GPIO_PIN_5);
+MotorDriver motorDriver(&htim1, TIM_CHANNEL_1, GPIOB, GPIO_PIN_5);
 Encoder encoder(&htim2);
 DCMotor dc_motor(motorDriver, encoder);
 
@@ -78,7 +78,7 @@ DCMotor dc_motor(motorDriver, encoder);
 // PID-Regler
 // -----------------------------------------
 PositionController position_controller(0.0013,0.0,0.0);
-SpeedController speed_controller(0.0,4.0,0.0);*/
+SpeedController speed_controller(0.0,4.0,0.0);
 
 /* USER CODE END PV */
 
@@ -133,14 +133,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  //MX_TIM1_Init();
-  //MX_TIM2_Init();
-  //MX_USART2_UART_Init();
+  MX_TIM1_Init();
+  MX_TIM2_Init();
+  MX_USART2_UART_Init();
   //MX_I2C1_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
-  /*HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
@@ -207,7 +207,7 @@ int main(void)
 
   // Filterkonstante (je kleiner, desto träger, z. B. 0.05 für starkes Filtern)
   const float alpha_voltage = 0.5f;
-  const float alpha_current = 0.3f;*/
+  const float alpha_current = 0.3f;
 
 
   uint8_t data;
@@ -219,15 +219,15 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  if(HAL_I2C_Mem_Read(&hi2c2, SENSOR_ADDR<<1, 0x0C, I2C_MEMADD_SIZE_8BIT, &data, 2, 1000) == HAL_OK){
+	  /*if(HAL_I2C_Mem_Read(&hi2c2, SENSOR_ADDR<<1, 0x0C, I2C_MEMADD_SIZE_8BIT, &data, 2, 1000) == HAL_OK){
 		  __NOP();
 	  } else {
 		 __NOP();
 	  }
-	  HAL_Delay(100);
+	  HAL_Delay(100);*/
 
     /* USER CODE BEGIN 3 */
-/*	  int32_t time = millis();
+	  int32_t time = millis();
       if(time - update_pid_controller_timer >= 10)
       {
     	  int32_t currentPos = encoder.getCurrentValue();
@@ -281,12 +281,12 @@ int main(void)
           } else if (rxIndex < RX_BUFFER_SIZE - 1) {
               rxBuffer[rxIndex++] = ch;
           }
-      }*/
+      }
 
   }
   /* USER CODE END 3 */
 }
-/*
+
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[])
 {
 	HAL_UART_Transmit(huart, (uint8_t*)buffer, strlen(buffer), UART_SEND_TIMEOUT);
@@ -327,7 +327,7 @@ float get_motor_speed() {
 
 	return velocity;
 }
-*/
+
 /**
   * @brief USART2 Initialization Function
   * @param None
@@ -343,7 +343,7 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 1 */
 
   /* USER CODE END USART2_Init 1 */
-	/*
+
   huart2.Instance = USART2;
   huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -358,7 +358,7 @@ static void MX_USART2_UART_Init(void)
   {
     Error_Handler();
   }
-  */
+
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
