@@ -46,7 +46,6 @@ extern "C" {
 #define UART_SEND_TIMEOUT 50
 #define ENCODER_RESOLUTION 8384   // Impulse pro Umdrehung
 const uint8_t INA226_IC2_ADDRESS = (0x40 << 1);
-const double SHUNT_RESISTOR_OHMS = 0.1;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,7 +60,6 @@ const double SHUNT_RESISTOR_OHMS = 0.1;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-#define SENSOR_ADDR 0x40
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
@@ -232,13 +230,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-	  /*if(HAL_I2C_Mem_Read(&hi2c2, SENSOR_ADDR<<1, 0x0C, I2C_MEMADD_SIZE_8BIT, &data, 2, 1000) == HAL_OK){
-		  __NOP();
-	  } else {
-		 __NOP();
-	  }
-	  HAL_Delay(100);*/
 
     /* USER CODE BEGIN 3 */
 	  int32_t time = millis();
@@ -445,7 +436,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
-  /*htim1.Instance = TIM1;
+  htim1.Instance = TIM1;
   htim1.Init.Prescaler = 3;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = PWM_MAX;
@@ -497,11 +488,11 @@ static void MX_TIM1_Init(void)
   if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
   {
     Error_Handler();
-  }*/
+  }
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
-  //HAL_TIM_MspPostInit(&htim1);
+ HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -523,7 +514,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
-  /*htim2.Instance = TIM2;
+  htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 4294967295;
@@ -547,7 +538,7 @@ static void MX_TIM2_Init(void)
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
-  }*/
+  }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
