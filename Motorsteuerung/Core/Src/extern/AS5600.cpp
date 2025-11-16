@@ -71,7 +71,7 @@ bool AS5600::begin(uint8_t directionPin)
   //{
   //  pinMode(_directionPin, OUTPUT);
   //}
-  setDirection(AS5600_CLOCK_WISE);
+  setDirection(AS5600_COUNTERCLOCK_WISE);
 
   if (! isConnected()) return false;
   return true;
@@ -108,8 +108,8 @@ uint8_t AS5600::getAddress()
 //
 void AS5600::setDirection(uint8_t direction)
 {
-  /*_direction = direction;
-  if (_directionPin != AS5600_SW_DIRECTION_PIN)
+  _direction = direction;
+  /*if (_directionPin != AS5600_SW_DIRECTION_PIN)
   {
     digitalWrite(_directionPin, _direction);
   }*/

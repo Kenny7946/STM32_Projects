@@ -94,6 +94,7 @@ static void MX_I2C2_Init(void);
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
 void I2C_SEND(uint8_t port, uint8_t data);
 float get_motor_speed();
+float as5600GetAngle(AS5600& as5600);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -201,6 +202,8 @@ int main(void)
 
   AS5600 as5600(&hi2c2);
 
+  as5600.setDirection(1);
+
   int connected = 0;
   while(!connected)
   {
@@ -253,7 +256,7 @@ int main(void)
     	    filtered_voltage = alpha_voltage * voltage_raw + (1.0f - alpha_voltage) * filtered_voltage;
     	    filtered_current = alpha_current * current_raw + (1.0f - alpha_current) * filtered_current;
 
-    	    float angle  = (float)(as5600.rawAngle() * AS5600_RAW_TO_DEGREES);
+    	    float angle  = as5600GetAngle(as5600);
 
 
 
@@ -333,6 +336,20 @@ float get_motor_speed() {
 	last_time = now;
 
 	return velocity;
+}
+
+float as5600GetAngle(AS5600& as5600)
+{
+	const float offset = -53.4f;
+	float angle = (float)(as5600.rawAngle() * AS5600_RAW_TO_DEGREES);
+	angle -= offset;
+
+	if(angle > 360.0f)
+	{
+		angle -= 360.0f;
+	}
+
+	return angle;
 }
 
 /**
