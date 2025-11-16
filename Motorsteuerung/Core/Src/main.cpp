@@ -35,8 +35,8 @@ extern "C" {
 #include "pid_controller.hpp"
 #include "position_controller.hpp"
 #include "speed_controller.hpp"
-#include <Autofox_INA226.h>
 #include <INA226.h>
+#include <AS5600.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +46,6 @@ extern "C" {
 #define UART_SEND_TIMEOUT 50
 #define ENCODER_RESOLUTION 8384   // Impulse pro Umdrehung
 const uint8_t INA226_IC2_ADDRESS = (0x40 << 1);
-const double SHUNT_RESISTOR_OHMS = 0.1;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,11 +60,11 @@ const double SHUNT_RESISTOR_OHMS = 0.1;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c2;
 
 // -----------------------------------------
 // Hardware-Setup
@@ -79,7 +78,6 @@ DCMotor dc_motor(motorDriver, encoder);
 // -----------------------------------------
 PositionController position_controller(0.0013,0.0,0.0);
 SpeedController speed_controller(0.0,4.0,0.0);
-AutoFox_INA226 ina226;
 
 /* USER CODE END PV */
 
@@ -91,7 +89,8 @@ static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_I2C1_Init(void);
+//static void MX_I2C1_Init(void);
+static void MX_I2C2_Init(void);
 void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
 void I2C_SEND(uint8_t port, uint8_t data);
 float get_motor_speed();
@@ -136,7 +135,8 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_USART2_UART_Init();
-  MX_I2C1_Init();
+  //MX_I2C1_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
@@ -160,7 +160,7 @@ int main(void)
   int32_t send_message_timer = 0;
   int32_t update_pid_controller_timer = 0;
 
-  HAL_I2C_StateTypeDef test = HAL_I2C_GetState(&hi2c1);
+  HAL_I2C_StateTypeDef test = HAL_I2C_GetState(&hi2c2);
   if(test == HAL_I2C_STATE_READY)
   {
 	  __NOP();
@@ -170,7 +170,7 @@ int main(void)
 	  __NOP();
   }
 
-  INA226 INA((0x40 << 1), &hi2c1);
+  INA226 INA((0x40 << 1), &hi2c2);
 
   if(INA.begin())
   {
@@ -199,6 +199,19 @@ int main(void)
 
   HAL_Delay(10);
 
+  AS5600 as5600(&hi2c2);
+
+  int connected = 0;
+  while(!connected)
+  {
+	  connected = as5600.begin();
+	  HAL_Delay(100);
+	  __NOP();
+  }
+  int magnet = as5600.detectMagnet();
+  int too_strong = as5600.magnetTooStrong();
+  int too_weak = as5600.magnetTooWeak();
+
 
   // Globale oder statische Variablen für den gefilterten Wert
   static float filtered_voltage = 0.0f;
@@ -209,14 +222,14 @@ int main(void)
   const float alpha_current = 0.3f;
 
 
-
+  uint8_t data;
+  data = 1234;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	  int32_t time = millis();
@@ -240,13 +253,15 @@ int main(void)
     	    filtered_voltage = alpha_voltage * voltage_raw + (1.0f - alpha_voltage) * filtered_voltage;
     	    filtered_current = alpha_current * current_raw + (1.0f - alpha_current) * filtered_current;
 
+    	    float angle  = (float)(as5600.rawAngle() * AS5600_RAW_TO_DEGREES);
+
 
 
      	 char msg[64];
      	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
-     	std::sprintf(msg, "%.3fV %.3f\r\n", filtered_voltage, filtered_current);
+     	std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
@@ -290,7 +305,7 @@ void I2C_SEND(uint8_t port, uint8_t data)
 	uint8_t buff[size];
 	buff[0] = port;
 	buff[1] = data;
-	HAL_I2C_Master_Transmit(&hi2c1, INA226_IC2_ADDRESS, buff, size, 1000);
+	HAL_I2C_Master_Transmit(&hi2c2, INA226_IC2_ADDRESS, buff, size, 1000);
 }
 
 float get_motor_speed() {
@@ -335,6 +350,7 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 1 */
 
   /* USER CODE END USART2_Init 1 */
+
   huart2.Instance = USART2;
   huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -349,6 +365,7 @@ static void MX_USART2_UART_Init(void)
   {
     Error_Handler();
   }
+
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
@@ -475,7 +492,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
-  HAL_TIM_MspPostInit(&htim1);
+ HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -559,6 +576,7 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
+
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
@@ -573,36 +591,79 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 1 */
 
   /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00100D14;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  //hi2c1.Instance = I2C1;
+  //hi2c1.Init.Timing = 0x00100D14;
+  //hi2c1.Init.OwnAddress1 = 0;
+  //hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  //hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  //hi2c1.Init.OwnAddress2 = 0;
+  //hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  //hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  //hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  //if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  //{
+    //Error_Handler();
+  //}
+
+  /** Configure Analogue filter
+  */
+  //if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  //{
+    //Error_Handler();
+  //}
+
+  /** Configure Digital filter
+  */
+  //if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  //{
+    //Error_Handler();
+  //}
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x00100D14;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure Analogue filter
   */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
+  /* USER CODE BEGIN I2C2_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -616,6 +677,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  __NOP();
   while (1)
   {
   }
