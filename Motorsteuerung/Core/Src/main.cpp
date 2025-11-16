@@ -243,9 +243,18 @@ int main(void)
     	  float time_diff = (float)(time - update_pid_controller_timer) / 1000.0f;
     	  update_pid_controller_timer = time;
 
-    	  //float controlSignal = position_controller.update(currentPos, time_diff);
-    	  float controlSignal = speed_controller.update(motor_speed_rps, time_diff);
+    	  float angle  = as5600GetAngle(as5600);
 
+    	  //float controlSignal = position_controller.update(currentPos, time_diff);
+    	  //float controlSignal = speed_controller.update(motor_speed_rps, time_diff);
+
+    	  const float k = 0.00375f;
+    	  float diff = angle - 90.0f;
+    	  float force = -diff * k;
+
+
+
+    	  float controlSignal = force;
     	  dc_motor.setOutput(controlSignal);
 
     	    // Messwerte vom INA226 lesen
@@ -256,7 +265,7 @@ int main(void)
     	    filtered_voltage = alpha_voltage * voltage_raw + (1.0f - alpha_voltage) * filtered_voltage;
     	    filtered_current = alpha_current * current_raw + (1.0f - alpha_current) * filtered_current;
 
-    	    float angle  = as5600GetAngle(as5600);
+
 
 
 
@@ -264,7 +273,8 @@ int main(void)
      	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
-     	std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
+     	//std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
+     	std::sprintf(msg, "%ld %.2f %.2f %.2f\r\n", time, angle, force, controlSignal);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 

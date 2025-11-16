@@ -18,10 +18,10 @@ void MotorDriver::setOutput(float value)
     if (value > 1.0f) value = 1.0f;
     if (value < -1.0f) value = -1.0f;
 
-    if(fabs(value) < 0.12f)
+    /*if(fabs(value) < 0.12f)
     {
     	value = 0.0f;
-    }
+    }*/
 
     bool direction = (value >= 0.0f);
     uint16_t pwm_value = static_cast<uint16_t>(std::fabs(value) * pwm_max);
