@@ -256,10 +256,27 @@ int main(void)
     		  diff = 0;
     	  }
 
-    	  float force = -diff * k;
+    	  float deadzone = 20.0f; // +/- 20°
+    	  float slope = 0.0085f;  // neue flachere Steigung
+
+    	  float sign = (diff >= 0) ? 1.0f : -1.0f;
+    	  float absDiff = fabs(diff);
+
+    	  float force = 0;
+
+    	  if(absDiff > deadzone)
+    	  {
+    	      force = -(absDiff - deadzone) * slope * sign;
+    	  }
+    	  else
+    	  {
+    	      force = 0; // innerhalb Deadzone sanft
+    	  }
+
 
     	  float controlSignal = force;
-    	  dc_motor.setOutput(controlSignal);
+
+    	  dc_motor.setOutput(force);
 
     	    // Messwerte vom INA226 lesen
     	    float voltage_raw = INA.getBusVoltage_mV() / 1000.0f;
@@ -280,7 +297,7 @@ int main(void)
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
      	//std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
-     	std::sprintf(msg, "%ld %.2f %.2f %.2f %.2f %.2f %.2f\r\n", time, angle, force, controlSignal, voltage_raw, motor_voltage, current_raw);
+     	std::sprintf(msg, "%ld %.2f %.2f %.2f %.2f\r\n", time, angle, controlSignal, motor_voltage, current_raw);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
