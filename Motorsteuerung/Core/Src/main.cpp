@@ -79,6 +79,13 @@ DCMotor dc_motor(motorDriver, encoder);
 PositionController position_controller(0.0013,0.0,0.0);
 SpeedController speed_controller(0.0,4.0,0.0);
 
+
+float detents[] = { 30, 45, 60, 75, 90, 105, 120, 135 };
+
+// maximale Kraft, die ins Detent zieht
+const float detentStrength = 0.3f;
+const float detentRange    = 3.0f;    // Bereich, in dem „eingezogen“ wird
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,6 +102,7 @@ void UART_SEND(UART_HandleTypeDef *huart, char buffer[]);
 void I2C_SEND(uint8_t port, uint8_t data);
 float get_motor_speed();
 float as5600GetAngle(AS5600& as5600);
+float getDetentForce(float angle);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -227,6 +235,7 @@ int main(void)
 
   uint8_t data;
   data = 1234;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -256,23 +265,8 @@ int main(void)
     		  diff = 0;
     	  }
 
-    	  float deadzone = 20.0f; // +/- 20°
-    	  float slope = 0.0085f;  // neue flachere Steigung
 
-    	  float sign = (diff >= 0) ? 1.0f : -1.0f;
-    	  float absDiff = fabs(diff);
-
-    	  float force = 0;
-
-    	  if(absDiff > deadzone)
-    	  {
-    	      force = -(absDiff - deadzone) * slope * sign;
-    	  }
-    	  else
-    	  {
-    	      force = 0; // innerhalb Deadzone sanft
-    	  }
-
+    	  float force = getDetentForce(angle);
 
     	  float controlSignal = force;
 
@@ -383,6 +377,24 @@ float as5600GetAngle(AS5600& as5600)
 	}
 
 	return angle;
+}
+
+float getDetentForce(float angle)
+{
+    float force = 0;
+    for(int i = 0; i < sizeof(detents)/sizeof(detents[0]); i++)
+    {
+        float diff = angle - detents[i];
+
+        if (fabs(diff) < detentRange) {
+            // Richtung bestimmen
+            float s = (diff > 0) ? 1.0f : -1.0f;
+
+            // je näher am Detent, desto härter zieht es rein
+            force -= s * detentStrength * (1.0f - fabs(diff)/detentRange);
+        }
+    }
+    return force;
 }
 
 /**
