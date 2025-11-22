@@ -250,9 +250,13 @@ int main(void)
 
     	  const float k = 0.00375f;
     	  float diff = angle - 90.0f;
+
+    	  if(fabs(diff) < 20)
+    	  {
+    		  diff = 0;
+    	  }
+
     	  float force = -diff * k;
-
-
 
     	  float controlSignal = force;
     	  dc_motor.setOutput(controlSignal);
@@ -265,6 +269,8 @@ int main(void)
     	    filtered_voltage = alpha_voltage * voltage_raw + (1.0f - alpha_voltage) * filtered_voltage;
     	    filtered_current = alpha_current * current_raw + (1.0f - alpha_current) * filtered_current;
 
+    	    float motor_voltage = filtered_voltage * motorDriver.getCurrentPwmPercentage() / 100.0f;
+
 
 
 
@@ -274,7 +280,7 @@ int main(void)
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
      	//std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
-     	std::sprintf(msg, "%ld %.2f %.2f %.2f\r\n", time, angle, force, controlSignal);
+     	std::sprintf(msg, "%ld %.2f %.2f %.2f %.2f %.2f %.2f\r\n", time, angle, force, controlSignal, voltage_raw, motor_voltage, current_raw);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
@@ -350,7 +356,7 @@ float get_motor_speed() {
 
 float as5600GetAngle(AS5600& as5600)
 {
-	const float offset = -53.4f;
+	const float offset = -60.3f;
 	float angle = (float)(as5600.rawAngle() * AS5600_RAW_TO_DEGREES);
 	angle -= offset;
 

@@ -21,12 +21,14 @@ private:
     GPIO_TypeDef* dir_port;
     uint16_t dir_pin;
     uint16_t pwm_max;
+    uint16_t current_pwm_value = 0u;
 
 public:
     MotorDriver(TIM_HandleTypeDef* handle_timer, uint32_t channel,
                 GPIO_TypeDef* dir_port, uint16_t dir_pin, uint16_t pwm_max = PWM_MAX);
 
     void setOutput(float value);
+    uint16_t getCurrentPwmPercentage();
 };
 
 

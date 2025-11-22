@@ -18,17 +18,16 @@ void MotorDriver::setOutput(float value)
     if (value > 1.0f) value = 1.0f;
     if (value < -1.0f) value = -1.0f;
 
-    /*if(fabs(value) < 0.12f)
-    {
-    	value = 0.0f;
-    }*/
-
     bool direction = (value >= 0.0f);
-    uint16_t pwm_value = static_cast<uint16_t>(std::fabs(value) * pwm_max);
+    current_pwm_value = static_cast<uint16_t>(std::fabs(value) * pwm_max);
 
     HAL_GPIO_WritePin(dir_port, dir_pin, direction ? GPIO_PIN_RESET : GPIO_PIN_SET);
-    __HAL_TIM_SET_COMPARE(handle_timer, channel, pwm_value);
+    __HAL_TIM_SET_COMPARE(handle_timer, channel, current_pwm_value);
 }
 
+uint16_t MotorDriver::getCurrentPwmPercentage()
+{
+	return current_pwm_value;
+}
 
 
