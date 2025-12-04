@@ -103,6 +103,7 @@ void I2C_SEND(uint8_t port, uint8_t data);
 float get_motor_speed();
 float as5600GetAngle(AS5600& as5600);
 float getDetentForce(float angle);
+float getFederkraftForce(float angle);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -257,19 +258,7 @@ int main(void)
     	  //float controlSignal = position_controller.update(currentPos, time_diff);
     	  //float controlSignal = speed_controller.update(motor_speed_rps, time_diff);
 
-    	  const float k = 0.00375f;
-    	  float diff = angle - 90.0f;
-
-    	  if(fabs(diff) < 20)
-    	  {
-    		  diff = 0;
-    	  }
-
-
-    	  float force = getDetentForce(angle);
-
-    	  float controlSignal = force;
-
+    	  float force = getFederkraftForce(angle);
     	  dc_motor.setOutput(force);
 
     	    // Messwerte vom INA226 lesen
@@ -283,15 +272,12 @@ int main(void)
     	    float motor_voltage = filtered_voltage * motorDriver.getCurrentPwmPercentage() / 100.0f;
 
 
-
-
-
      	 char msg[64];
      	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
      	//std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
-     	std::sprintf(msg, "%ld %.2f %.2f %.2f %.2f\r\n", time, angle, controlSignal, motor_voltage, current_raw);
+     	std::sprintf(msg, "%ld %.2f %.2f %.2f %.2f\r\n", time, angle, force, motor_voltage, current_raw);
  		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
@@ -377,6 +363,36 @@ float as5600GetAngle(AS5600& as5600)
 	}
 
 	return angle;
+}
+
+float getFederkraftForce(float angle)
+{
+	float setpoint = 90.0f;
+  float deadzone = 20.0f; // +/- 20°
+  float slope = 0.0085f;  // neue flachere Steigung
+
+  float diff = angle - setpoint;
+
+  if(fabs(diff) < 20)
+  {
+	  diff = 0;
+  }
+
+  float sign = (diff >= 0) ? 1.0f : -1.0f;
+  float absDiff = fabs(diff);
+
+  float force = 0;
+
+  if(absDiff > deadzone)
+  {
+	  force = -(absDiff - deadzone) * slope * sign;
+  }
+  else
+  {
+	  force = 0; // innerhalb Deadzone sanft
+  }
+
+  return force;
 }
 
 float getDetentForce(float angle)
