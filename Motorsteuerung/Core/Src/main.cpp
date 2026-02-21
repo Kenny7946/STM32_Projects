@@ -37,6 +37,11 @@ extern "C" {
 #include "speed_controller.hpp"
 #include <INA226.h>
 #include <AS5600.h>
+#include "usb_device.h"
+#include "usb_includes.hpp"
+//#include "usbd_customhid.h"
+#include "usbd_core.h"
+//#include "usbd_customhid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,6 +91,8 @@ float detents[] = { 30, 45, 60, 75, 90, 105, 120, 135 };
 const float detentStrength = 0.3f;
 const float detentRange    = 3.0f;    // Bereich, in dem „eingezogen“ wird
 
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,6 +111,7 @@ float get_motor_speed();
 float as5600GetAngle(AS5600& as5600);
 float getDetentForce(float angle);
 float getFederkraftForce(float angle);
+static void MX_USB_OTG_FS_PCD_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -111,6 +119,67 @@ float getFederkraftForce(float angle);
 uint32_t millis() {
     return HAL_GetTick();   // Gibt ms seit HAL_Init() zurück
 }
+
+__ALIGN_BEGIN static uint8_t CustomHID_ReportDesc[] __ALIGN_END =
+{
+    0x05, 0x01,        // Usage Page (Generic Desktop)
+    0x09, 0x04,        // Usage (Joystick)
+    0xA1, 0x01,        // Collection (Application)
+        0x09, 0x30,    //   Usage (X)
+        0x15, 0x00,    //   Logical Min 0
+        0x26, 0xFF, 0x00,  // Logical Max 255
+        0x75, 0x08,    //   Report Size 8 bit
+        0x95, 0x01,    //   Report Count 1
+        0x81, 0x02,    //   Input (Data,Var,Abs)
+    0xC0               // End Collection
+};
+
+__ALIGN_BEGIN static uint8_t HID_GamepadReportDesc[] __ALIGN_END = {
+    0x05, 0x01,        // Usage Page (Generic Desktop)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+
+    // X axis only
+    0x05, 0x01,        // Usage Page (Generic Desktop)
+    0x09, 0x30,        // Usage (X)
+    0x15, 0x81,        // Logical Minimum (-127)
+    0x25, 0x7F,        // Logical Maximum (127)
+    0x75, 0x08,        // Report Size (8 bits)
+    0x95, 0x01,        // Report Count (1)
+    0x81, 0x02,        // Input (Data, Variable, Absolute)
+
+    0xC0               // End Collection
+};
+
+typedef struct {
+    int8_t x; // X-Achse
+} HID_GamepadReport_TypeDef;
+
+void HID_SendGamepad(int8_t x);
+
+extern USBD_HandleTypeDef hUsbDeviceFS;
+
+void HID_SendGamepad(int8_t x)
+{
+    HID_GamepadReport_TypeDef report;
+    report.x = x;
+    //USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&report, sizeof(report));
+}
+
+uint8_t ConvertAngleToAxis(float angleDeg)
+{
+    // angleDeg ist 0..360
+    // Wir skalieren auf 0..255:
+    float scaled = (angleDeg / 360.0f) * 255.0f;
+
+    // Begrenzen und casten
+    if (scaled < 0) scaled = 0;
+    if (scaled > 255) scaled = 255;
+
+    return (uint8_t)scaled;
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -144,9 +213,11 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
-  MX_USART2_UART_Init();
+  //MX_USART2_UART_Init();
   //MX_I2C1_Init();
   MX_I2C2_Init();
+  MX_USB_DEVICE_Init();
+  MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
@@ -253,7 +324,9 @@ int main(void)
     	  float time_diff = (float)(time - update_pid_controller_timer) / 1000.0f;
     	  update_pid_controller_timer = time;
 
-    	  float angle  = as5600GetAngle(as5600);
+    	  float angle = as5600GetAngle(as5600); // 0..360°
+    	  int8_t lever_x = (int8_t)((angle / 360.0f) * 254 - 127); // -127..127
+    	  HID_SendGamepad(lever_x);
 
     	  //float controlSignal = position_controller.update(currentPos, time_diff);
     	  //float controlSignal = speed_controller.update(motor_speed_rps, time_diff);
@@ -272,13 +345,14 @@ int main(void)
     	    float motor_voltage = filtered_voltage * motorDriver.getCurrentPwmPercentage() / 100.0f;
 
 
+
      	 char msg[64];
      	//std::sprintf(msg, "%ld %ld %ld %f\r\n", time, (currentPos), position_controller.target_position, controlSignal);
      	 //std::sprintf(msg, "%ld %f %f %f\r\n", time, (motor_speed_rps), (speed_controller.getTargetSpeed()), (controlSignal));
      	//std::sprintf(msg, "%ld %.2fV %.1fmA\r\n", time, filtered_voltage, filtered_current);
      	//std::sprintf(msg, "%.3fV %.3f %.3f\r\n", filtered_voltage, filtered_current, angle);
      	std::sprintf(msg, "%ld %.2f %.2f %.2f %.2f\r\n", time, angle, force, motor_voltage, current_raw);
- 		 HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
+ 		// HAL_UART_Transmit(&huart2, (uint8_t*)msg, std::strlen(msg), UART_SEND_TIMEOUT);
 
 
       }
@@ -742,6 +816,36 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+static void MX_USB_OTG_FS_PCD_Init(void)
+{
+
+  /* USER CODE BEGIN USB_OTG_FS_Init 0 */
+
+  /* USER CODE END USB_OTG_FS_Init 0 */
+
+  /* USER CODE BEGIN USB_OTG_FS_Init 1 */
+
+  /* USER CODE END USB_OTG_FS_Init 1 */
+  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
+  hpcd_USB_OTG_FS.Init.dev_endpoints = 6;
+  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
+  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
+  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.battery_charging_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
+  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
+  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USB_OTG_FS_Init 2 */
+
+  /* USER CODE END USB_OTG_FS_Init 2 */
 
 }
 
