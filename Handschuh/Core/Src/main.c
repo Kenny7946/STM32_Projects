@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "bno055_stm32/bno055_stm32.h"
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -117,9 +118,10 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	    /* Register schreiben */
 	    bno055_vector_t v = bno055_getVectorEuler();
-	    printf("Heading: %.2f Roll: %.2f Pitch: %.2f\r\n", v.x, v.y, v.z);
-	    v = bno055_getVectorQuaternion();
-	    printf("W: %.2f X: %.2f Y: %.2f Z: %.2f\r\n", v.w, v.x, v.y, v.z);
+	    printf("%.2f,%.2f,%.2f\r\n", v.x, v.y, v.z);
+	   // printf("Heading: %.2f Roll: %.2f Pitch: %.2f\r\n", v.x, v.y, v.z);
+	    //v = bno055_getVectorQuaternion();
+	    //printf("W: %.2f X: %.2f Y: %.2f Z: %.2f\r\n", v.w, v.x, v.y, v.z);
 
 	    HAL_Delay(20);
   }
