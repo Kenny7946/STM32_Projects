@@ -11,3 +11,5 @@ Release/
 # CubeMX Backup
 *.ioc.bak
 
+Handschuh/Core/Src/extern
+
