@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "bno055_stm32/bno055_stm32.h"
 #include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,6 +43,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -52,28 +54,28 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 #define SLAVE_ADDR 0x28   // Beispieladresse
 
-volatile uint16_t adc_values[5];
+volatile uint16_t adc_values[2];
 volatile uint16_t adc_value;
+uint8_t conv_complete = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-int _write(int file, char *ptr, int len)
-{
-    HAL_UART_Transmit(&huart2, (uint8_t*)ptr, len, HAL_MAX_DELAY);
-    return len;
+int _write(int file, char *ptr, int len) {
+	HAL_UART_Transmit(&huart2, (uint8_t*) ptr, len, HAL_MAX_DELAY);
+	return len;
 }
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /**
@@ -105,65 +107,46 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  if (HAL_I2C_IsDeviceReady(&hi2c1, SLAVE_ADDR<<1, 3, 100) == HAL_OK)
-      printf("Slave antwortet\r\n");
-  else
-      printf("Kein Geraet gefunden\r\n");
+	if (HAL_I2C_IsDeviceReady(&hi2c1, SLAVE_ADDR << 1, 3, 100) == HAL_OK)
+		printf("Slave antwortet\r\n");
+	else
+		printf("Kein Geraet gefunden\r\n");
 
-  bno055_assignI2C(&hi2c1);
-  bno055_setup();
-  bno055_setOperationModeNDOF();
+	bno055_assignI2C(&hi2c1);
+	bno055_setup();
+	bno055_setOperationModeNDOF();
 
-
-
-  //HAL_TIM_Base_Start(&htim1);
-  //HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_1);
-
-  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc_value, 1);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	    /* Register schreiben */
-	    //bno055_vector_t v = bno055_getVectorEuler();
-	    //printf("%.2f,%.2f,%.2f\r\n", v.x, v.y, v.z);
-	   // printf("Heading: %.2f Roll: %.2f Pitch: %.2f\r\n", v.x, v.y, v.z);
-	    //v = bno055_getVectorQuaternion();
-	    //printf("W: %.2f X: %.2f Y: %.2f Z: %.2f\r\n", v.w, v.x, v.y, v.z);
+		/* Register schreiben */
+		//bno055_vector_t v = bno055_getVectorEuler();
+		//printf("%.2f,%.2f,%.2f\r\n", v.x, v.y, v.z);
+		// printf("Heading: %.2f Roll: %.2f Pitch: %.2f\r\n", v.x, v.y, v.z);
+		//v = bno055_getVectorQuaternion();
+		//printf("W: %.2f X: %.2f Y: %.2f Z: %.2f\r\n", v.w, v.x, v.y, v.z);
+		//printf("%d,%d,%d,%d,%d\r\n", adc_values[0], adc_values[1], adc_values[2], adc_values[3], adc_values[4]);
+		uint16_t poti1 = adc_values[0]; // PA0
+		uint16_t poti2 = adc_values[1]; // PA1
 
-	  //printf("%d,%d,%d,%d,%d\r\n", adc_values[0], adc_values[1], adc_values[2], adc_values[3], adc_values[4]);
+		printf("%u\t%u\r\n", poti1, poti2);
 
+		HAL_Delay(100);
 
-
-	  uint16_t adc_val_ch0;
-	  uint16_t adc_val_ch1;
-
-	  HAL_ADC_Start(&hadc1); // Starte die Scan-Konversion
-
-	  // Warte auf Rank 1 → PA0
-	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	  adc_val_ch0 = HAL_ADC_GetValue(&hadc1);
-
-	  // Warte auf Rank 2 → PA1
-	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	  adc_val_ch1 = HAL_ADC_GetValue(&hadc1);
-
-	  HAL_ADC_Stop(&hadc1);
-
-	  printf("%u\t%u\r\n", adc_val_ch0, adc_val_ch1);
-
-	    HAL_Delay(20);
-  }
+		//HAL_Delay(20);
+	}
   /* USER CODE END 3 */
 }
 
@@ -233,18 +216,18 @@ static void MX_ADC1_Init(void)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV64;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   hadc1.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -450,6 +433,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -481,11 +480,10 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
