@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "bno055_stm32/bno055_stm32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -128,6 +128,10 @@ int main(void)
 		printf("Slave antwortet\r\n");
 	else
 		printf("Kein Geraet gefunden\r\n");
+
+	bno055_assignI2C(&hi2c1);
+	bno055_setup();
+	bno055_setOperationModeNDOF();
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 2);
   /* USER CODE END 2 */
@@ -514,8 +518,8 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

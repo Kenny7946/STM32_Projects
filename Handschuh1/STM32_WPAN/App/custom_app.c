@@ -29,7 +29,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "bno055_stm32/bno055_stm32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -89,6 +89,9 @@ void myTask(void)
 
 	UpdateCharData[2] = (uint8_t)((adc_values[1] >> 8) & 0xFF);
 	UpdateCharData[3] = (uint8_t)(adc_values[1] & 0xFF);
+
+	bno055_vector_t v = bno055_getVectorEuler();
+
 	Custom_Writechar_Update_Char();
 	//Custom_Writechar_Send_Notification();
 	UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
