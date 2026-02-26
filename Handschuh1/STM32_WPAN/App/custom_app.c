@@ -73,7 +73,7 @@ uint8_t UpdateCharData[512];
 uint8_t NotifyCharData[512];
 uint16_t Connection_Handle;
 /* USER CODE BEGIN PV */
-
+extern volatile uint16_t adc_values[2];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -84,7 +84,11 @@ static void Custom_Writechar_Send_Notification(void);
 /* USER CODE BEGIN PFP */
 void myTask(void)
 {
-	UpdateCharData[0]++;
+	UpdateCharData[0] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
+	UpdateCharData[1] = (uint8_t)(adc_values[0] & 0xFF);
+
+	UpdateCharData[2] = (uint8_t)((adc_values[1] >> 8) & 0xFF);
+	UpdateCharData[3] = (uint8_t)(adc_values[1] & 0xFF);
 	Custom_Writechar_Update_Char();
 	//Custom_Writechar_Send_Notification();
 	UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
