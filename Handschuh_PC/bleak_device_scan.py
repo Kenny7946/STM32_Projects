@@ -5,6 +5,47 @@ from bleak import BleakScanner, BleakClient
 last_time = time()
 counter = 0
 
+import struct
+
+def parse_hand_data(data: bytes):
+    """
+    Parst ein Paket vom STM32 Handschuh.
+
+    data: bytes, Länge = 76
+    Rückgabe: dict mit allen Sensoren
+    """
+    if len(data) < 76:
+        raise ValueError(f"Unerwartete Paketgröße: {len(data)} Byte, erwartet 76")
+
+    idx = 0
+    # --- ADC Werte (uint16, Big-Endian) ---
+    adc0 = (data[idx] << 8) | data[idx + 1]
+    idx += 2
+    adc1 = (data[idx] << 8) | data[idx + 1]
+    idx += 2
+
+    # --- 18 Float-Werte ---
+    floats = []
+    for _ in range(18):
+        f_bytes = data[idx:idx+4]
+        val = struct.unpack('<f', f_bytes)[0]  # STM32 float = little-endian
+        floats.append(val)
+        idx += 4
+
+    # Mapping zu Sensoren
+    result = {
+        "adc0": adc0,
+        "adc1": adc1,
+        "euler": floats[0:3],
+        "gravity": floats[3:6],
+        "gyro": floats[6:9],
+        "accel": floats[9:12],
+        "mag": floats[12:15],
+        "linAccel": floats[15:18],
+    }
+
+    return result
+
 async def find_device(name=None, address=None):
     print("Scanne nach BLE-Geräten…")
     devices = await BleakScanner.discover()
@@ -37,9 +78,17 @@ def handle(sender, data):
     counter += 1
     now = time()
     if now - last_time >= 1.0:
-        print(f"FPS: {counter} | Letztes Paket: {len(data)} Byte")
+        #print(f"FPS: {counter} | Letztes Paket: {len(data)} Byte")
         counter = 0
         last_time = now
+
+    try:
+        sensors = parse_hand_data(data)
+        #print(f"ADC: {sensors['adc0']}, {sensors['adc1']}")
+        print(f"Euler: {sensors['euler']}")
+        #print(f"Gyro: {sensors['gyro']}")
+    except Exception as e:
+        print("Fehler beim Parsen:", e)
 
 async def main():
     # Optional: MAC-Adresse deines STM32 hier eintragen
