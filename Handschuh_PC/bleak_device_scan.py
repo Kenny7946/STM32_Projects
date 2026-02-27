@@ -1,5 +1,9 @@
 import asyncio
+from time import time
 from bleak import BleakScanner, BleakClient
+
+last_time = time()
+counter = 0
 
 async def find_device(name=None, address=None):
     print("Scanne nach BLE-Geräten…")
@@ -28,7 +32,14 @@ async def get_notify_char(address):
     return None
 
 def handle(sender, data):
-    print(f"Daten empfangen ({sender}): {list(data)}")
+    #print(f"Daten empfangen ({sender}): {list(data)}")
+    global counter, last_time
+    counter += 1
+    now = time()
+    if now - last_time >= 1.0:
+        print(f"FPS: {counter} | Letztes Paket: {len(data)} Byte")
+        counter = 0
+        last_time = now
 
 async def main():
     # Optional: MAC-Adresse deines STM32 hier eintragen
