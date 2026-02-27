@@ -82,19 +82,61 @@ static void Custom_Writechar_Update_Char(void);
 static void Custom_Writechar_Send_Notification(void);
 
 /* USER CODE BEGIN PFP */
+static void write_float_to_buffer(uint8_t *buffer, uint16_t *index, float value)
+{
+    memcpy(&buffer[*index], &value, sizeof(float));
+    *index += sizeof(float);
+}
+
 void myTask(void)
 {
-	UpdateCharData[0] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
-	UpdateCharData[1] = (uint8_t)(adc_values[0] & 0xFF);
+    uint16_t idx = 0;
 
-	UpdateCharData[2] = (uint8_t)((adc_values[1] >> 8) & 0xFF);
-	UpdateCharData[3] = (uint8_t)(adc_values[1] & 0xFF);
+    // --- ADC Werte ---
+    UpdateCharData[idx++] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
+    UpdateCharData[idx++] = (uint8_t)(adc_values[0] & 0xFF);
 
-	bno055_vector_t v = bno055_getVectorEuler();
+    UpdateCharData[idx++] = (uint8_t)((adc_values[1] >> 8) & 0xFF);
+    UpdateCharData[idx++] = (uint8_t)(adc_values[1] & 0xFF);
 
-	Custom_Writechar_Update_Char();
-	//Custom_Writechar_Send_Notification();
-	UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
+    // --- BNO055 Vektoren holen ---
+    bno055_vector_t euler      = bno055_getVectorEuler();
+    bno055_vector_t gravity    = bno055_getVectorGravity();
+    bno055_vector_t gyro       = bno055_getVectorGyroscope();
+    bno055_vector_t accel      = bno055_getVectorAccelerometer();
+    bno055_vector_t mag        = bno055_getVectorMagnetometer();
+    bno055_vector_t linAccel   = bno055_getVectorLinearAccel();
+
+    // --- Alle Werte als float in Buffer schreiben ---
+    write_float_to_buffer(UpdateCharData, &idx, (float)euler.x);
+    write_float_to_buffer(UpdateCharData, &idx, (float)euler.y);
+    write_float_to_buffer(UpdateCharData, &idx, (float)euler.z);
+
+    write_float_to_buffer(UpdateCharData, &idx, (float)gravity.x);
+    write_float_to_buffer(UpdateCharData, &idx, (float)gravity.y);
+    write_float_to_buffer(UpdateCharData, &idx, (float)gravity.z);
+
+    write_float_to_buffer(UpdateCharData, &idx, (float)gyro.x);
+    write_float_to_buffer(UpdateCharData, &idx, (float)gyro.y);
+    write_float_to_buffer(UpdateCharData, &idx, (float)gyro.z);
+
+    write_float_to_buffer(UpdateCharData, &idx, (float)accel.x);
+    write_float_to_buffer(UpdateCharData, &idx, (float)accel.y);
+    write_float_to_buffer(UpdateCharData, &idx, (float)accel.z);
+
+    write_float_to_buffer(UpdateCharData, &idx, (float)mag.x);
+    write_float_to_buffer(UpdateCharData, &idx, (float)mag.y);
+    write_float_to_buffer(UpdateCharData, &idx, (float)mag.z);
+
+    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.x);
+    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.y);
+    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.z);
+
+    // --- BLE senden ---
+    Custom_Writechar_Update_Char();
+    //Custom_Writechar_Send_Notification();
+
+    UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
 }
 /* USER CODE END PFP */
 
