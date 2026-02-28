@@ -14,14 +14,20 @@ def parse_hand_data(data: bytes):
     data: bytes, Länge = 76
     Rückgabe: dict mit allen Sensoren
     """
-    if len(data) < 76:
-        raise ValueError(f"Unerwartete Paketgröße: {len(data)} Byte, erwartet 76")
+    if len(data) < 86:
+        raise ValueError(f"Unerwartete Paketgröße: {len(data)} Byte, erwartet 86")
 
     idx = 0
     # --- ADC Werte (uint16, Big-Endian) ---
     adc0 = (data[idx] << 8) | data[idx + 1]
     idx += 2
     adc1 = (data[idx] << 8) | data[idx + 1]
+    idx += 2
+    adc2 = (data[idx] << 8) | data[idx + 1]
+    idx += 2
+    adc3 = (data[idx] << 8) | data[idx + 1]
+    idx += 2
+    adc4 = (data[idx] << 8) | data[idx + 1]
     idx += 2
 
     # --- 18 Float-Werte ---
@@ -36,6 +42,9 @@ def parse_hand_data(data: bytes):
     result = {
         "adc0": adc0,
         "adc1": adc1,
+        "adc2": adc2,
+        "adc3": adc3,
+        "adc4": adc4,
         "euler": floats[0:3],
         "gravity": floats[3:6],
         "gyro": floats[6:9],
@@ -84,8 +93,8 @@ def handle(sender, data):
 
     try:
         sensors = parse_hand_data(data)
-        #print(f"ADC: {sensors['adc0']}, {sensors['adc1']}")
-        print(f"Euler: {sensors['euler']}")
+        print(f"ADC: {sensors['adc0']}, {sensors['adc1']}, {sensors['adc2']}, {sensors['adc3']}, {sensors['adc4']}")
+        #print(f"Euler: {sensors['euler']}")
         #print(f"Gyro: {sensors['gyro']}")
     except Exception as e:
         print("Fehler beim Parsen:", e)
