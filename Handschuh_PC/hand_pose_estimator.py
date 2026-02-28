@@ -114,43 +114,43 @@ class HandPoseEstimator:
         ]
         
         # # Rotation der Hand aus Euler (intrinsisch xyz)
-        hand_rot = self._rotation_from_sensor(sensor_data)
-
-        # Finger auf Basis setzen
-        angle = self.adc_to_angle(adc_values[2], 2)
-        start = hand_position + hand_rot.apply(self.finger_bases["middle"])
-        joints_local = self.compute_finger_positions(
-            base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
-            lengths=self.finger_lengths["middle"],
-            angle=angle,
-            plane_normal=np.array([-1,0,0])
-        )
-
-        joints_world = [start + hand_rot.apply(j) for j in joints_local]
-
-        pose = {}
-        
-        pose["middle"] = joints_world
-
-        # pose = {}
-
         # hand_rot = self._rotation_from_sensor(sensor_data)
 
-        # for idx, finger in enumerate(self.finger_lengths.keys()):
-        #     if finger == "middle":
-        #         angle = self.adc_to_angle(adc_values[idx], idx)
+        # # Finger auf Basis setzen
+        # angle = self.adc_to_angle(adc_values[2], 2)
+        # start = hand_position + hand_rot.apply(self.finger_bases["middle"])
+        # joints_local = self.compute_finger_positions(
+        #     base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
+        #     lengths=self.finger_lengths["middle"],
+        #     angle=angle,
+        #     plane_normal=np.array([-1,0,0])
+        # )
 
-        #         start = hand_position + hand_rot.apply(self.finger_bases[finger])
+        # joints_world = [start + hand_rot.apply(j) for j in joints_local]
 
-        #         joints_local = self.compute_finger_positions(
-        #             base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
-        #             lengths=self.finger_lengths[finger],
-        #             angle=angle,
-        #             plane_normal=np.array([-1,0,0]))
+        # pose = {}
+        
+        # pose["middle"] = joints_world
 
-        #         joints_world = [start + j for j in joints_local]
+        pose = {}
 
-        #         pose[finger] = joints_world
+        hand_rot = self._rotation_from_sensor(sensor_data)
+
+        for idx, finger in enumerate(self.finger_lengths.keys()):
+            #if finger == "middle":
+            angle = self.adc_to_angle(adc_values[idx], idx)
+
+            start = hand_position + hand_rot.apply(self.finger_bases[finger])
+
+            joints_local = self.compute_finger_positions(
+                base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
+                lengths=self.finger_lengths[finger],
+                angle=angle,
+                plane_normal=np.array([-1,0,0]))
+
+            joints_world = [start + hand_rot.apply(j) for j in joints_local]
+
+            pose[finger] = joints_world
 
         return pose
     
