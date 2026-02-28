@@ -113,7 +113,7 @@ class HandPoseEstimator:
             sensor_data["adc4"],
         ]
         
-        # Rotation der Hand aus Euler (intrinsisch xyz)
+        # # Rotation der Hand aus Euler (intrinsisch xyz)
         hand_rot = self._rotation_from_sensor(sensor_data)
 
         # Finger auf Basis setzen
@@ -126,30 +126,29 @@ class HandPoseEstimator:
             plane_normal=np.array([-1,0,0])
         )
 
-        joints_world = [start + j for j in joints_local]
+        joints_world = [start + hand_rot.apply(j) for j in joints_local]
 
         pose = {}
-
+        
         pose["middle"] = joints_world
 
-        # pose als dict zurückgeben (wie bei Achsen)
-        #pose = {0: np.array([start, end])}  # Key 0 = unser Finger
-
         # pose = {}
+
+        # hand_rot = self._rotation_from_sensor(sensor_data)
 
         # for idx, finger in enumerate(self.finger_lengths.keys()):
         #     if finger == "middle":
         #         angle = self.adc_to_angle(adc_values[idx], idx)
 
-        #         base_world = hand_position + hand_rot.apply(self.finger_bases[finger])
+        #         start = hand_position + hand_rot.apply(self.finger_bases[finger])
 
         #         joints_local = self.compute_finger_positions(
         #             base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
         #             lengths=self.finger_lengths[finger],
         #             angle=angle,
-        #             plane_normal=np.array([1,0,0]))
+        #             plane_normal=np.array([-1,0,0]))
 
-        #         joints_world = [base_world + j for j in joints_local]
+        #         joints_world = [start + j for j in joints_local]
 
         #         pose[finger] = joints_world
 
