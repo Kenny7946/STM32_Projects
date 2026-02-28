@@ -61,18 +61,23 @@ class HandPoseEstimator:
     # Fingerkinematik
     # =========================================================
 
-    def compute_finger_positions(self, base_pos, lengths, angle):
+    def compute_finger_positions(self, base_pos, lengths, angle, plane_normal=np.array([0,0,1])):
         """
-        Einfache Vorwärtskinematik in einer Ebene.
+        Vorwärtskinematik: Finger lokal in Beugeebene biegen.
+        
+        base_pos: Startpunkt (Weltkoordinaten)
+        lengths: Liste der Segmentlängen
+        angle: Beugewinkel pro Segment (Rad)
+        plane_normal: Beugeebene (Finger beugt entlang dieser Achse)
         """
         positions = [base_pos]
-        direction = np.array([0, 1, 0])
-        current_angle = 0
+        direction = np.array([0, 1, 0])  # Standardfinger Richtung Y
+        current_rot = R.identity()  # lokale Rotation kumuliert
 
         for L in lengths:
-            current_angle += angle
-            rot = R.from_euler("z", current_angle).apply(direction)
-            new_pos = positions[-1] + rot * L
+            rot = R.from_rotvec(angle * plane_normal)  # Rotation pro Segment
+            current_rot = current_rot * rot  # kumulativ
+            new_pos = positions[-1] + current_rot.apply(direction) * L
             positions.append(new_pos)
 
         return positions
@@ -89,7 +94,7 @@ class HandPoseEstimator:
             return R.from_quat(sensor_data["quat"])
 
         if "euler" in sensor_data:
-            roll, pitch, yaw = sensor_data["euler"]
+            yaw, pitch, roll = sensor_data["euler"]
             return R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
 
         raise ValueError("Sensor data requires 'euler' or 'quat'.")
@@ -99,14 +104,6 @@ class HandPoseEstimator:
     # =========================================================
 
     def compute_pose(self, sensor_data, hand_position=np.zeros(3)):
-        """
-        Berechnet die komplette Handpose.
-
-        Returns:
-            dict[str, list[np.array]]
-            -> Gelenkpositionen pro Finger
-        """
-
         adc_values = [
             sensor_data["adc0"],
             sensor_data["adc1"],
@@ -116,26 +113,21 @@ class HandPoseEstimator:
         ]
 
         hand_rot = self._rotation_from_sensor(sensor_data)
-
         pose = {}
 
         for idx, finger in enumerate(self.finger_lengths.keys()):
-
             angle = self.adc_to_angle(adc_values[idx], idx)
+            base_local = self.finger_bases[finger]
 
-            base = hand_position + hand_rot.apply(self.finger_bases[finger])
-
-            joints = self.compute_finger_positions(
-                base,
-                self.finger_lengths[finger],
-                angle,
+            # Finger lokal berechnen (lokale Rotation kumuliert)
+            joints_world = self.compute_finger_positions(
+                base_pos=hand_position + hand_rot.apply(base_local),
+                lengths=self.finger_lengths[finger],
+                angle=angle,
+                plane_normal=np.array([-1,0,0])  # Finger beugt in Z-Ebene
             )
 
-            joints_world = [
-                hand_rot.apply(p - hand_position) + hand_position
-                for p in joints
-            ]
-
+            # Optional: Handrotation nochmal anwenden (bereits in base_pos enthalten)
             pose[finger] = joints_world
 
         return pose
