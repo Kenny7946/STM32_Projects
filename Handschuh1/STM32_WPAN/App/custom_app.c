@@ -99,6 +99,15 @@ void myTask(void)
     UpdateCharData[idx++] = (uint8_t)((adc_values[1] >> 8) & 0xFF);
     UpdateCharData[idx++] = (uint8_t)(adc_values[1] & 0xFF);
 
+    UpdateCharData[idx++] = (uint8_t)((adc_values[2] >> 8) & 0xFF);
+    UpdateCharData[idx++] = (uint8_t)(adc_values[2] & 0xFF);
+
+    UpdateCharData[idx++] = (uint8_t)((adc_values[3] >> 8) & 0xFF);
+    UpdateCharData[idx++] = (uint8_t)(adc_values[3] & 0xFF);
+
+    UpdateCharData[idx++] = (uint8_t)((adc_values[4] >> 8) & 0xFF);
+    UpdateCharData[idx++] = (uint8_t)(adc_values[4] & 0xFF);
+
     // --- BNO055 Vektoren holen ---
     bno055_vector_t euler      = bno055_getVectorEuler();
     bno055_vector_t gravity    = bno055_getVectorGravity();
