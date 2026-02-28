@@ -62,69 +62,66 @@ class HandPoseEstimator:
     # =========================================================
 
     def compute_finger_positions(self, base_pos, lengths, angle, plane_normal=np.array([1,0,0])):
+        """
+        Vorwärtskinematik: Finger lokal in Beugeebene biegen.
+        
+        base_pos: Startpunkt (Weltkoordinaten)
+        lengths: Liste der Segmentlängen
+        angle: Beugewinkel pro Segment (Rad)
+        plane_normal: Achse, um die jeder Finger lokal rotiert (Finger beugt entlang dieser Achse)
+        """
         positions = [base_pos]
-        direction = np.array([0, 1, 0])  # Finger zeigt entlang Y
+        direction = np.array([0, 1, 0])  # Finger zeigt initial entlang Y
         current_rot = R.identity()
 
         for L in lengths:
-            rot = R.from_rotvec(angle * plane_normal)  # lokale Beugung
+            # Rotation um die lokale Beugeachse
+            rot = R.from_rotvec(angle * plane_normal)
             current_rot = current_rot * rot
             new_pos = positions[-1] + current_rot.apply(direction) * L
             positions.append(new_pos)
 
         return positions
 
-    # =========================================================
-    # Orientierung
-    # =========================================================
-
+    # -----------------------------
+    # Handrotation aus Sensor
+    # -----------------------------
     def _rotation_from_sensor(self, sensor_data):
         """
         Rotation aus Euler oder Quaternion erstellen.
+        BNO055 liefert Roll=X, Pitch=Y, Yaw=Z
+        Euler-Winkel werden als INTRINSISCHE Rotationen angewendet (lokale Achsen)
         """
         if "quat" in sensor_data:
             return R.from_quat(sensor_data["quat"])
 
         if "euler" in sensor_data:
-            # BNO055 liefert Roll=X, Pitch=Y, Yaw=Z
             roll, pitch, yaw = sensor_data["euler"]
-            return R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
+            # INTRINSISCH: X=Roll, Y=Pitch, Z=Yaw
+            return R.from_euler("XYZ", [roll, pitch, yaw], degrees=True)
 
         raise ValueError("Sensor data requires 'euler' or 'quat'.")
 
-    # =========================================================
-    # Hauptfunktion
-    # =========================================================
-
+    # -----------------------------
+    # Hauptfunktion: Pose berechnen
+    # -----------------------------
     def compute_pose(self, sensor_data, hand_position=np.zeros(3)):
-        adc_values = [
-            sensor_data["adc0"],
-            sensor_data["adc1"],
-            sensor_data["adc2"],
-            sensor_data["adc3"],
-            sensor_data["adc4"],
+        """
+        Debug: nur Handrotation, Achsen X=Roll, Y=Pitch, Z=Yaw
+        """
+        roll, pitch, yaw = sensor_data["euler"]
+
+        # Intrinsische Rotation um lokale Achsen
+        hand_rot = R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
+
+        origin = np.array([0,0,0])
+        axis_vectors = [
+            np.array([0.05,0,0]),  # X = Roll
+            np.array([0,0.05,0]),  # Y = Pitch
+            np.array([0,0,0.05])   # Z = Yaw
         ]
 
-        hand_rot = self._rotation_from_sensor(sensor_data)
-        pose = {}
+        rotated_axes = [hand_rot.apply(vec) for vec in axis_vectors]
 
-        for idx, finger in enumerate(self.finger_lengths.keys()):
-            angle = self.adc_to_angle(adc_values[idx], idx)
-
-            # Basis der Finger in Weltkoordinaten
-            base_world = hand_position + hand_rot.apply(self.finger_bases[finger])
-
-            # Finger lokal in Fingerkoordinaten beugen
-            joints_local = self.compute_finger_positions(
-                base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
-                lengths=self.finger_lengths[finger],
-                angle=angle,
-                plane_normal=np.array([1,0,0])  # Beugeachse X
-            )
-
-            # Finger auf Basis setzen
-            joints_world = [base_world + j for j in joints_local]
-
-            pose[finger] = joints_world
-
+        pose = {i: np.array([origin, rotated_axes[i]]) for i in range(3)}
         return pose

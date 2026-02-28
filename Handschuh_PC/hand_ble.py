@@ -40,7 +40,7 @@ class HandDataParser:
             "adc2": adc2,
             "adc3": adc3,
             "adc4": adc4,
-            "euler": floats[0:3],
+            "euler": [floats[2], floats[1], floats[0]],
             "gravity": floats[3:6],
             "gyro": floats[6:9],
             "accel": floats[9:12],
@@ -123,7 +123,7 @@ class HandBLEReceiver:
                 sensors = HandDataParser.parse(data)
                 # Formatiert ausgeben
                 #yaw, pitch, roll = sensors["euler"]
-                #print(f"Euler angles [deg]: Roll={roll:6.2f}, Pitch={pitch:6.2f}, Yaw={yaw:6.2f}")
+                print(f"Euler angles [deg]: Roll={sensors["euler"][0]:6.2f}, Pitch={sensors["euler"][1]:6.2f}, Yaw={sensors["euler"][2]:6.2f}")
 
                 callback(sensors)
 

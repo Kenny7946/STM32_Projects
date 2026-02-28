@@ -22,9 +22,35 @@ class Hand3DViewer(gl.GLViewWidget):
         self.opts['center'] = pg.Vector(0, 0.05, 0)
 
         # Koordinatenachsen
-        axis = gl.GLAxisItem()
-        axis.setSize(0.1, 0.1, 0.1)
-        self.addItem(axis)
+        axis_length = 0.1
+        origin = np.array([0, 0, 0])
+
+        # X-Achse = Rot
+        x_axis = gl.GLLinePlotItem(
+            pos=np.array([origin, origin + np.array([axis_length, 0, 0])]),
+            color=(1, 0, 0, 1),
+            width=3,
+            antialias=True
+        )
+        self.addItem(x_axis)
+
+        # Y-Achse = Grün
+        y_axis = gl.GLLinePlotItem(
+            pos=np.array([origin, origin + np.array([0, axis_length, 0])]),
+            color=(0, 1, 0, 1),
+            width=3,
+            antialias=True
+        )
+        self.addItem(y_axis)
+
+        # Z-Achse = Blau
+        z_axis = gl.GLLinePlotItem(
+            pos=np.array([origin, origin + np.array([0, 0, axis_length])]),
+            color=(0, 0, 1, 1),
+            width=3,
+            antialias=True
+        )
+        self.addItem(z_axis)
 
         self.finger_lines = {}
 
