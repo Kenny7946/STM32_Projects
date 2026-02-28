@@ -138,24 +138,31 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
 
     def _toggle_logging(self, checked):
         if self.logger is None:
-            print("Kein Logger gesetzt")
+            print("Kein Logger gesetzt!")
             return
 
         if checked:
-            self.logger.start_new_file()
+            # Logging läuft gerade → Button gedrückt, Logging stoppen
+            self.logger.set_enabled(False)
+            self.debug_button.setText("Logging pausiert…")
+
+            # Dialog für neuen Dateinamen
+            filename, ok = QtWidgets.QInputDialog.getText(
+                self, "Neues Logfile", "Dateiname für neues Log (optional):"
+            )
+
+            # Neues File starten
+            if not ok or filename == "" or filename == " ":
+                filename = None  # Abbruch → automatisch Zeitstempel
+            self.logger.start_new_file(filename)
+
+            # Button wieder aktiv anzeigen
+            self.debug_button.setChecked(True)
             self.debug_button.setText("Logging läuft…")
-            print("Logging deaktiviert")
-            
         else:
+            # Falls Button deaktiviert → Logging stoppen
             self.logger.set_enabled(False)
             self.debug_button.setText("Neues Log starten")
-            print("Logging aktiviert")
-
-        if checked:
-            self.debug_button.setText("Stop Logging")
-            
-        else:
-            self.debug_button.setText("Start Logging")
             
 
 
