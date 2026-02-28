@@ -85,6 +85,7 @@ def main():
 
     # Visualizer starten
     window = HandTrackingWindow(pose_provider)
+    window.set_logger(logger)
     window.show()
 
     # BLE Loop in separatem Thread

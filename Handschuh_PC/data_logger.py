@@ -19,8 +19,12 @@ class HandTrackingLogger:
     def __init__(self, filepath="handtracking_log.jsonl"):
         self.filepath = Path(filepath)
         self.filepath.parent.mkdir(parents=True, exist_ok=True)
+        self.enabled = False
 
         self.file = open(self.filepath, "a", buffering=1)  # line buffered
+
+    def set_enabled(self, state: bool):
+        self.enabled = state
 
     def _serialize_pose(self, pose):
         """Konvertiert numpy arrays → Listen."""
@@ -33,6 +37,9 @@ class HandTrackingLogger:
         return serialized
 
     def log(self, sensors, pose=None, position=None):
+        if not self.enabled:
+            return
+        
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "unix_time": time.time(),

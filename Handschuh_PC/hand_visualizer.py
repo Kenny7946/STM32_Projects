@@ -87,6 +87,8 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Hand Tracking 3D")
         self.resize(900, 700)
 
+        self.logger = None
+
         # === Zentrales Widget + Layout ===
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
@@ -99,9 +101,13 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.viewer)
 
         # === Debug Button ===
-        self.debug_button = QtWidgets.QPushButton("Debug Button")
-        self.debug_button.clicked.connect(self._on_debug_button_clicked)
-        layout.addWidget(self.debug_button)
+        self.debug_button = QtWidgets.QPushButton("Start Logging")
+        self.debug_button.setCheckable(True)
+        self.debug_button.clicked.connect(self._toggle_logging)
+
+        toolbar = QtWidgets.QToolBar()
+        toolbar.addWidget(self.debug_button)
+        self.addToolBar(toolbar)
 
         # Pose Provider
         self.pose_provider = pose_provider
@@ -125,6 +131,24 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             pose = self.pose_provider()
             if pose is not None:
                 self.viewer.update_hand(pose)
+
+    def set_logger(self, logger):
+        self.logger = logger
+
+
+    def _toggle_logging(self, checked):
+        if self.logger is None:
+            print("Kein Logger gesetzt")
+            return
+
+        self.logger.set_enabled(checked)
+
+        if checked:
+            self.debug_button.setText("Stop Logging")
+            print("Logging aktiviert")
+        else:
+            self.debug_button.setText("Start Logging")
+            print("Logging deaktiviert")
 
 
 # ---------------------------------------------------------
