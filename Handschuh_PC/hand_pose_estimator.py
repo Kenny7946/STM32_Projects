@@ -61,22 +61,14 @@ class HandPoseEstimator:
     # Fingerkinematik
     # =========================================================
 
-    def compute_finger_positions(self, base_pos, lengths, angle, plane_normal=np.array([0,0,1])):
-        """
-        Vorwärtskinematik: Finger lokal in Beugeebene biegen.
-        
-        base_pos: Startpunkt (Weltkoordinaten)
-        lengths: Liste der Segmentlängen
-        angle: Beugewinkel pro Segment (Rad)
-        plane_normal: Beugeebene (Finger beugt entlang dieser Achse)
-        """
+    def compute_finger_positions(self, base_pos, lengths, angle, plane_normal=np.array([1,0,0])):
         positions = [base_pos]
-        direction = np.array([0, 1, 0])  # Standardfinger Richtung Y
-        current_rot = R.identity()  # lokale Rotation kumuliert
+        direction = np.array([0, 1, 0])  # Finger zeigt entlang Y
+        current_rot = R.identity()
 
         for L in lengths:
-            rot = R.from_rotvec(angle * plane_normal)  # Rotation pro Segment
-            current_rot = current_rot * rot  # kumulativ
+            rot = R.from_rotvec(angle * plane_normal)  # lokale Beugung
+            current_rot = current_rot * rot
             new_pos = positions[-1] + current_rot.apply(direction) * L
             positions.append(new_pos)
 
@@ -88,13 +80,14 @@ class HandPoseEstimator:
 
     def _rotation_from_sensor(self, sensor_data):
         """
-        Erstellt Rotation aus Euler oder Quaternion.
+        Rotation aus Euler oder Quaternion erstellen.
         """
         if "quat" in sensor_data:
             return R.from_quat(sensor_data["quat"])
 
         if "euler" in sensor_data:
-            yaw, pitch, roll = sensor_data["euler"]
+            # BNO055 liefert Roll=X, Pitch=Y, Yaw=Z
+            roll, pitch, yaw = sensor_data["euler"]
             return R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
 
         raise ValueError("Sensor data requires 'euler' or 'quat'.")
@@ -117,17 +110,21 @@ class HandPoseEstimator:
 
         for idx, finger in enumerate(self.finger_lengths.keys()):
             angle = self.adc_to_angle(adc_values[idx], idx)
-            base_local = self.finger_bases[finger]
 
-            # Finger lokal berechnen (lokale Rotation kumuliert)
-            joints_world = self.compute_finger_positions(
-                base_pos=hand_position + hand_rot.apply(base_local),
+            # Basis der Finger in Weltkoordinaten
+            base_world = hand_position + hand_rot.apply(self.finger_bases[finger])
+
+            # Finger lokal in Fingerkoordinaten beugen
+            joints_local = self.compute_finger_positions(
+                base_pos=np.zeros(3),  # Start bei 0, wir addieren Handbasis später
                 lengths=self.finger_lengths[finger],
                 angle=angle,
-                plane_normal=np.array([-1,0,0])  # Finger beugt in Z-Ebene
+                plane_normal=np.array([1,0,0])  # Beugeachse X
             )
 
-            # Optional: Handrotation nochmal anwenden (bereits in base_pos enthalten)
+            # Finger auf Basis setzen
+            joints_world = [base_world + j for j in joints_local]
+
             pose[finger] = joints_world
 
         return pose
