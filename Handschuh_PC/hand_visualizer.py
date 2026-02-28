@@ -87,9 +87,23 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Hand Tracking 3D")
         self.resize(900, 700)
 
-        self.viewer = Hand3DViewer()
-        self.setCentralWidget(self.viewer)
+        # === Zentrales Widget + Layout ===
+        central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(central_widget)
 
+        layout = QtWidgets.QVBoxLayout()
+        central_widget.setLayout(layout)
+
+        # === 3D Viewer ===
+        self.viewer = Hand3DViewer()
+        layout.addWidget(self.viewer)
+
+        # === Debug Button ===
+        self.debug_button = QtWidgets.QPushButton("Debug Button")
+        self.debug_button.clicked.connect(self._on_debug_button_clicked)
+        layout.addWidget(self.debug_button)
+
+        # Pose Provider
         self.pose_provider = pose_provider
 
         # Timer für Live-Updates
@@ -97,12 +111,20 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self._update_scene)
         self.timer.start(int(1000 / update_hz))
 
-    def _update_scene(self):
-        if self.pose_provider is None:
-            return
+    # ==========================
+    # Button Callback
+    # ==========================
+    def _on_debug_button_clicked(self):
+        print("🔘 Debug Button wurde gedrückt!")
 
-        pose = self.pose_provider()
-        self.viewer.update_hand(pose)
+    # ==========================
+    # Update Loop
+    # ==========================
+    def _update_scene(self):
+        if self.pose_provider is not None:
+            pose = self.pose_provider()
+            if pose is not None:
+                self.viewer.update_hand(pose)
 
 
 # ---------------------------------------------------------

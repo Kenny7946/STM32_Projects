@@ -41,7 +41,7 @@ def pose_provider():
         pose = estimator.compute_pose(sensors)
         return pose
     except:
-        print("Konnte Pose nicht bestimmen")
+        #print("Konnte Pose nicht bestimmen")
         return None
 
 

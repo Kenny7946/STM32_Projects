@@ -121,10 +121,6 @@ class HandBLEReceiver:
                 self._last_time = now
             try:
                 sensors = HandDataParser.parse(data)
-                # Formatiert ausgeben
-                #yaw, pitch, roll = sensors["euler"]
-                print(f"Euler angles [deg]: Roll={sensors["euler"][0]:6.2f}, Pitch={sensors["euler"][1]:6.2f}, Yaw={sensors["euler"][2]:6.2f}")
-
                 callback(sensors)
 
             except Exception as e:
