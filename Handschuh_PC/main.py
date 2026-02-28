@@ -37,9 +37,7 @@ base_dir = Path(__file__).resolve().parent
 log_dir = base_dir / "logs"
 log_dir.mkdir(exist_ok=True)
 
-filename = datetime.now().strftime("%Y%m%d_%H%M%S.jsonl")
-
-logger = HandTrackingLogger(log_dir / filename)
+logger = HandTrackingLogger(log_dir="C:/Markus/Coding/STM32/Handschuh_PC/logs")
 
 def pose_provider():
     """

@@ -141,14 +141,22 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             print("Kein Logger gesetzt")
             return
 
-        self.logger.set_enabled(checked)
+        if checked:
+            self.logger.start_new_file()
+            self.debug_button.setText("Logging läuft…")
+            print("Logging deaktiviert")
+            
+        else:
+            self.logger.set_enabled(False)
+            self.debug_button.setText("Neues Log starten")
+            print("Logging aktiviert")
 
         if checked:
             self.debug_button.setText("Stop Logging")
-            print("Logging aktiviert")
+            
         else:
             self.debug_button.setText("Start Logging")
-            print("Logging deaktiviert")
+            
 
 
 # ---------------------------------------------------------
