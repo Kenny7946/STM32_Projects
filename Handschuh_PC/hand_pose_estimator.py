@@ -107,21 +107,26 @@ class HandPoseEstimator:
     # -----------------------------
     def compute_pose(self, sensor_data, hand_position=np.zeros(3)):
         """
-        Debug: nur Handrotation, Achsen X=Roll, Y=Pitch, Z=Yaw
+        Debug: nur ein Finger, keine Beugung, zeigt Handrotation
         """
-        roll, pitch, yaw = sensor_data["euler"]
+        # BNO055 Euler-Werte
+        pitch, roll, yaw = sensor_data["euler"]
 
-        # Intrinsische Rotation um lokale Achsen
+        # Rotation der Hand aus Euler (intrinsisch xyz)
         hand_rot = R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
 
-        origin = np.array([0,0,0])
-        axis_vectors = [
-            np.array([0.05,0,0]),  # X = Roll
-            np.array([0,0.05,0]),  # Y = Pitch
-            np.array([0,0,0.05])   # Z = Yaw
-        ]
+        # Finger-Basis relativ zur Hand
+        finger_base = np.array([0.0, 0.0, 0.0])  # z.B. Mittel-Finger-Basis
+        finger_length = 0.05                       # Länge des Fingersegments
 
-        rotated_axes = [hand_rot.apply(vec) for vec in axis_vectors]
+        # Finger lokal entlang Y
+        finger_local = np.array([0, finger_length, 0])
 
-        pose = {i: np.array([origin, rotated_axes[i]]) for i in range(3)}
+        # Finger auf Basis setzen
+        start = hand_position + hand_rot.apply(finger_base)
+        end = start + hand_rot.apply(finger_local)
+
+        # pose als dict zurückgeben (wie bei Achsen)
+        pose = {0: np.array([start, end])}  # Key 0 = unser Finger
+
         return pose
