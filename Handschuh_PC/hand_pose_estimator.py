@@ -92,13 +92,9 @@ class HandPoseEstimator:
         BNO055 liefert Roll=X, Pitch=Y, Yaw=Z
         Euler-Winkel werden als INTRINSISCHE Rotationen angewendet (lokale Achsen)
         """
-        if "quat" in sensor_data:
-            return R.from_quat(sensor_data["quat"])
-
         if "euler" in sensor_data:
-            roll, pitch, yaw = sensor_data["euler"]
-            # INTRINSISCH: X=Roll, Y=Pitch, Z=Yaw
-            return R.from_euler("XYZ", [roll, pitch, yaw], degrees=True)
+            pitch, roll, yaw = sensor_data["euler"]
+            return R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
 
         raise ValueError("Sensor data requires 'euler' or 'quat'.")
 
@@ -109,11 +105,8 @@ class HandPoseEstimator:
         """
         Debug: nur ein Finger, keine Beugung, zeigt Handrotation
         """
-        # BNO055 Euler-Werte
-        pitch, roll, yaw = sensor_data["euler"]
-
         # Rotation der Hand aus Euler (intrinsisch xyz)
-        hand_rot = R.from_euler("xyz", [roll, pitch, yaw], degrees=True)
+        hand_rot = self._rotation_from_sensor(sensor_data)
 
         # Finger-Basis relativ zur Hand
         finger_base = np.array([0.0, 0.0, 0.0])  # z.B. Mittel-Finger-Basis
