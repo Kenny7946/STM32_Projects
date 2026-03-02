@@ -10,6 +10,13 @@ from hand_visualizer import HandTrackingWindow
 from data_logger import HandTrackingLogger
 from pathlib import Path
 from datetime import datetime
+from live_provider import LiveSensorProvider
+from replay_provider import LogReplayProvider
+
+
+MODE = "replay"   # "live" oder "replay"
+base_dir = Path(__file__).resolve().parent
+REPLAY_FILE = base_dir / "logs" / "temp123.jsonl"
 
 # -------------------------------
 # Shared Queue für Sensoren
@@ -24,6 +31,8 @@ def handle_sensor_data(sensors):
     """
     BLE Callback: speichert Sensor-Daten in Queue.
     """
+    if MODE != "live":
+        return
     if sensor_queue.full():
         sensor_queue.get_nowait()
     sensor_queue.put(sensors)
@@ -39,12 +48,19 @@ log_dir.mkdir(exist_ok=True)
 
 logger = HandTrackingLogger(log_dir="C:/Markus/Coding/STM32/Handschuh_PC/logs")
 
+live_sensor_provider = LiveSensorProvider(sensor_queue)
+log_replay_provider = LogReplayProvider(REPLAY_FILE, realtime=True, loop=True)
+
 def pose_provider():
     """
     Liest neueste Sensor-Daten aus Queue und berechnet Pose.
     """
     try:
-        sensors = sensor_queue.get_nowait()
+        if MODE == "live":
+            sensor_provider = live_sensor_provider
+        else:
+            sensor_provider = log_replay_provider
+        sensors = sensor_provider.get_next()
         pose = estimator.compute_pose(sensors)
         logger.log(
             sensors=sensors,
@@ -64,10 +80,19 @@ def start_ble_loop():
     """
     Async BLE loop wird in eigenem Thread gestartet.
     """
+    #TEMP
+    return
+    #END_TEMP
     async def run():
         ble = HandBLEReceiver(name="XX-STM32")  # optional: address="AA:BB:CC:DD:EE:FF"
         await ble.find_device()
-        await ble.start(handle_sensor_data)
+        try:
+            await ble.start(handle_sensor_data)
+        except asyncio.CancelledError:
+            print("BLE Loop cancelled")
+        finally:
+            await ble.stop()  # <- disconnect beim Exit
+            print("BLE sauber getrennt")
 
     asyncio.run(run())
 
