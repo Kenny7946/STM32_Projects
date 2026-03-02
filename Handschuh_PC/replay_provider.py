@@ -21,7 +21,7 @@ class LogReplayProvider:
             self.realtime = False
 
     def get_next(self):
-        print(f"Next: {self.index}")
+        #print(f"Next: {self.index}")
         if self.index >= len(self.data):
             if self.loop:
                 self.index = 0

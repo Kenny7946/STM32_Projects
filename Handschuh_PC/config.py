@@ -1,0 +1,1 @@
+MODE = "live"   # "live" oder "replay"

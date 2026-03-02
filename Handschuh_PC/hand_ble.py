@@ -115,8 +115,8 @@ class HandBLEReceiver:
         async def _handler(sender, data):
             self._counter += 1
             now = time()
-            if now - self._last_time >= 1.0:
-                print(f"FPS: {self._counter}")
+            if now - self._last_time >= 3.0:
+                print(f"FPS pro 3 Sekunden: {self._counter}")
                 self._counter = 0
                 self._last_time = now
             try:

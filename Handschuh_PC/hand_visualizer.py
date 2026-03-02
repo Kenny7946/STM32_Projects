@@ -3,7 +3,7 @@ import numpy as np
 from PyQt6 import QtWidgets, QtCore
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
-
+import config
 
 class Hand3DViewer(gl.GLViewWidget):
     """
@@ -105,8 +105,13 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.debug_button.setCheckable(True)
         self.debug_button.clicked.connect(self._toggle_logging)
 
+        self.source_button = QtWidgets.QPushButton("LIVE")
+        self.source_button.setCheckable(True)
+        self.source_button.clicked.connect(self.toggle_source)        
+
         toolbar = QtWidgets.QToolBar()
         toolbar.addWidget(self.debug_button)
+        toolbar.addWidget(self.source_button)
         self.addToolBar(toolbar)
 
         # Pose Provider
@@ -122,6 +127,15 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
     # ==========================
     def _on_debug_button_clicked(self):
         print("🔘 Debug Button wurde gedrückt!")
+
+    def toggle_source(self, checked):
+        if checked:
+            config.MODE = "replay"   # "live" oder "replay"
+        else:
+            config.MODE = "live"   # "live" oder "replay"            
+
+        self.source_button.setText(config.MODE)
+        print(f"Toggled data provider to {config.MODE}")
 
     # ==========================
     # Update Loop
