@@ -12,7 +12,18 @@ class LogReplayProvider:
 
         self._load()
 
+    def setReplayFile(self, replay_file):
+        if(self.logfile == replay_file):
+            return
+        
+        self.logfile = replay_file
+        self._load()
+        self.index = 0
+        
+
     def _load(self):
+        self.data = []
+
         with open(self.logfile, "r") as f:
             for line in f:
                 self.data.append(json.loads(line))

@@ -14,8 +14,8 @@ from live_provider import LiveSensorProvider
 from replay_provider import LogReplayProvider
 import config
 
-base_dir = Path(__file__).resolve().parent
-REPLAY_FILE = base_dir / "logs" / "temp123.jsonl"
+
+
 
 # -------------------------------
 # Shared Queue für Sensoren
@@ -47,7 +47,7 @@ log_dir.mkdir(exist_ok=True)
 logger = HandTrackingLogger(log_dir="C:/Markus/Coding/STM32/Handschuh_PC/logs")
 
 live_sensor_provider = LiveSensorProvider(sensor_queue)
-log_replay_provider = LogReplayProvider(REPLAY_FILE, realtime=True, loop=True)
+log_replay_provider = LogReplayProvider(config.REPLAY_FILE, realtime=True, loop=True)
 
 def pose_provider():
     """
@@ -57,6 +57,7 @@ def pose_provider():
         if config.MODE == "live":
             sensor_provider = live_sensor_provider
         else:
+            log_replay_provider.setReplayFile(config.REPLAY_FILE)
             sensor_provider = log_replay_provider
         sensors = sensor_provider.get_next()
         pose = estimator.compute_pose(sensors)

@@ -1,8 +1,10 @@
 import sys
 import numpy as np
 from PyQt6 import QtWidgets, QtCore
+from PyQt6.QtWidgets import QFileDialog
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
+from pathlib import Path
 import config
 
 class Hand3DViewer(gl.GLViewWidget):
@@ -130,9 +132,9 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
 
     def toggle_source(self, checked):
         if checked:
-            config.MODE = "replay"   # "live" oder "replay"
+            self.switch_to_replay()
         else:
-            config.MODE = "live"   # "live" oder "replay"            
+            self.switch_to_live()       
 
         self.source_button.setText(config.MODE)
         print(f"Toggled data provider to {config.MODE}")
@@ -177,7 +179,38 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             # Falls Button deaktiviert → Logging stoppen
             self.logger.set_enabled(False)
             self.debug_button.setText("Neues Log starten")
-            
+
+    def select_replay_file(self):
+        base_dir = Path(__file__).resolve().parent
+        logs_dir = base_dir / "logs"
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Replay-Datei auswählen",
+            str(logs_dir),
+            "JSONL Dateien (*.jsonl)"
+        )
+
+        if filename:
+            config.REPLAY_FILE = filename
+            print("Replay-Datei gesetzt:", filename)
+            return filename
+
+        return None
+    
+    def switch_to_replay(self):
+        filename = self.select_replay_file()
+        if not filename:
+            return
+
+        config.MODE = "replay" # "live" oder "replay"     
+        config.REPLAY_FILENAME = filename
+        print("Modus: REPLAY")
+        print(f"REPLAY_FILENAME: {config.REPLAY_FILENAME}")
+
+    def switch_to_live(self):
+        config.MODE = "live"   # "live" oder "replay"     
+                
 
 
 # ---------------------------------------------------------
