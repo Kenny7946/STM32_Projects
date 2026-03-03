@@ -193,10 +193,8 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             self.viewer.update_hand(pose)
 
             # Slider Update
-            progress = self.replay.get_progress()
-
             self.slider.blockSignals(True)
-            self.slider.setValue(int(progress * 1000))
+            self.slider.setValue(self.replay.current_index)
             self.slider.blockSignals(False)
 
             self.update_time_label()
@@ -205,18 +203,22 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         if not self.replay:
             return
 
-        current = (
-            self.replay.timestamps[self.replay.current_index]
-            - self.replay.start_time
-        )
-        total = self.replay.duration
+        current_ms = self.replay.get_current_time_ms()
+        total_ms = self.replay.get_total_time_ms()
 
-        def fmt(t):
-            m = int(t // 60)
-            s = int(t % 60)
-            return f"{m:02}:{s:02}"
+        current_frame, total_frames = self.replay.get_frame_info()
 
-        self.time_label.setText(f"{fmt(current)} / {fmt(total)}")
+        def fmt(ms):
+            seconds = ms // 1000
+            milliseconds = ms % 1000
+            minutes = seconds // 60
+            seconds = seconds % 60
+            return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+        time_str = f"{fmt(current_ms)} / {fmt(total_ms)}"
+        frame_str = f"Frame {current_frame + 1} / {total_frames}"
+
+        self.time_label.setText(f"{time_str}   |   {frame_str}")
 
     def set_logger(self, logger):
         self.logger = logger
@@ -273,8 +275,7 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         if not self.replay:
             return
 
-        normalized = value / 1000.0
-        self.replay.seek_time(normalized)
+        self.replay.current_index = value
 
     def select_replay_file(self):
         base_dir = Path(__file__).resolve().parent
@@ -300,6 +301,8 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             return
 
         self.replay = ReplayController(filename)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(self.replay.get_total_frames() - 1)
         config.MODE = "replay"
 
         self.source_button.setText("REPLAY")

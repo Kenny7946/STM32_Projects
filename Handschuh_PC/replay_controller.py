@@ -62,3 +62,16 @@ class ReplayController:
     def get_progress(self):
         current_time = self.timestamps[self.current_index]
         return (current_time - self.start_time) / self.duration
+    
+    def get_current_time_ms(self):
+        current = self.timestamps[self.current_index] - self.start_time
+        return int(current * 1000)
+
+    def get_total_time_ms(self):
+        return int(self.duration * 1000)
+
+    def get_frame_info(self):
+        return self.current_index, len(self.data)
+
+    def get_total_frames(self):
+        return len(self.data)
