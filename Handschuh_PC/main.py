@@ -47,28 +47,28 @@ log_dir.mkdir(exist_ok=True)
 logger = HandTrackingLogger(log_dir="C:/Markus/Coding/STM32/Handschuh_PC/logs")
 
 live_sensor_provider = LiveSensorProvider(sensor_queue)
-log_replay_provider = LogReplayProvider(config.REPLAY_FILE, realtime=True, loop=True)
 
 def pose_provider():
-    """
-    Liest neueste Sensor-Daten aus Queue und berechnet Pose.
-    """
     try:
-        if config.MODE == "live":
-            sensor_provider = live_sensor_provider
-        else:
-            log_replay_provider.setReplayFile(config.REPLAY_FILE)
-            sensor_provider = log_replay_provider
-        sensors = sensor_provider.get_next()
+        if config.MODE != "live":
+            return None
+
+        sensors = live_sensor_provider.get_next()
+        if sensors is None:
+            return None
+
         pose = estimator.compute_pose(sensors)
+
         logger.log(
             sensors=sensors,
             pose=pose,
             position=None
         )
+
         return pose
-    except:
-        #print("Konnte Pose nicht bestimmen")
+
+    except Exception as e:
+        print("Pose Error:", e)
         return None
 
 

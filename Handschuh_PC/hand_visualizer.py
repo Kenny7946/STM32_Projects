@@ -6,6 +6,8 @@ import pyqtgraph.opengl as gl
 import pyqtgraph as pg
 from pathlib import Path
 import config
+from replay_controller import ReplayController
+from hand_pose_estimator import HandPoseEstimator
 
 class Hand3DViewer(gl.GLViewWidget):
     """
@@ -90,6 +92,8 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.resize(900, 700)
 
         self.logger = None
+        self.replay = None
+        self.estimator = HandPoseEstimator()
 
         # === Zentrales Widget + Layout ===
         central_widget = QtWidgets.QWidget()
@@ -114,7 +118,29 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         toolbar = QtWidgets.QToolBar()
         toolbar.addWidget(self.debug_button)
         toolbar.addWidget(self.source_button)
-        self.addToolBar(toolbar)
+        
+
+        # --- Media Controls ---
+        self.play_button = QtWidgets.QPushButton("▶")
+        self.step_back_button = QtWidgets.QPushButton("⏮")
+        self.step_fwd_button = QtWidgets.QPushButton("⏭")
+
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(1000)
+
+        self.time_label = QtWidgets.QLabel("00:00 / 00:00")
+
+        toolbar.addWidget(self.step_back_button)
+        toolbar.addWidget(self.play_button)
+        toolbar.addWidget(self.step_fwd_button)
+        toolbar.addWidget(self.slider)
+        toolbar.addWidget(self.time_label)
+
+        self.play_button.clicked.connect(self.toggle_play)
+        self.step_fwd_button.clicked.connect(self.step_forward)
+        self.step_back_button.clicked.connect(self.step_backward)
+        self.slider.sliderMoved.connect(self.seek_position)
 
         # Pose Provider
         self.pose_provider = pose_provider
@@ -123,6 +149,8 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self._update_scene)
         self.timer.start(int(1000 / update_hz))
+
+        self.addToolBar(toolbar)
 
     # ==========================
     # Button Callback
@@ -143,10 +171,52 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
     # Update Loop
     # ==========================
     def _update_scene(self):
-        if self.pose_provider is not None:
-            pose = self.pose_provider()
-            if pose is not None:
-                self.viewer.update_hand(pose)
+
+        # -------- LIVE --------
+        if config.MODE == "live":
+            if self.pose_provider:
+                pose = self.pose_provider()
+                if pose:
+                    self.viewer.update_hand(pose)
+            return
+
+
+        # -------- REPLAY --------
+        if config.MODE == "replay" and self.replay:
+
+            dt = self.timer.interval() / 1000.0
+            self.replay.update(dt)
+
+            sensors = self.replay.get_current_sensors()
+            pose = self.estimator.compute_pose(sensors)
+
+            self.viewer.update_hand(pose)
+
+            # Slider Update
+            progress = self.replay.get_progress()
+
+            self.slider.blockSignals(True)
+            self.slider.setValue(int(progress * 1000))
+            self.slider.blockSignals(False)
+
+            self.update_time_label()
+
+    def update_time_label(self):
+        if not self.replay:
+            return
+
+        current = (
+            self.replay.timestamps[self.replay.current_index]
+            - self.replay.start_time
+        )
+        total = self.replay.duration
+
+        def fmt(t):
+            m = int(t // 60)
+            s = int(t % 60)
+            return f"{m:02}:{s:02}"
+
+        self.time_label.setText(f"{fmt(current)} / {fmt(total)}")
 
     def set_logger(self, logger):
         self.logger = logger
@@ -180,6 +250,32 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             self.logger.set_enabled(False)
             self.debug_button.setText("Neues Log starten")
 
+    def toggle_play(self):
+        if not self.replay:
+            return
+
+        if self.replay.playing:
+            self.replay.pause()
+            self.play_button.setText("▶")
+        else:
+            self.replay.play()
+            self.play_button.setText("⏸")
+
+    def step_forward(self):
+        if self.replay:
+            self.replay.step_forward()
+
+    def step_backward(self):
+        if self.replay:
+            self.replay.step_backward()
+
+    def seek_position(self, value):
+        if not self.replay:
+            return
+
+        normalized = value / 1000.0
+        self.replay.seek_time(normalized)
+
     def select_replay_file(self):
         base_dir = Path(__file__).resolve().parent
         logs_dir = base_dir / "logs"
@@ -203,14 +299,18 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         if not filename:
             return
 
-        config.MODE = "replay" # "live" oder "replay"     
-        config.REPLAY_FILENAME = filename
+        self.replay = ReplayController(filename)
+        config.MODE = "replay"
+
+        self.source_button.setText("REPLAY")
         print("Modus: REPLAY")
         print(f"REPLAY_FILENAME: {config.REPLAY_FILENAME}")
 
     def switch_to_live(self):
-        config.MODE = "live"   # "live" oder "replay"     
-                
+            config.MODE = "live"
+            self.source_button.setText("LIVE")
+            self.replay = None   
+                        
 
 
 # ---------------------------------------------------------
