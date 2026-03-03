@@ -8,6 +8,7 @@ from pathlib import Path
 import config
 from replay_controller import ReplayController
 from hand_pose_estimator import HandPoseEstimator
+from sensor_plot_widget import SensorPlotWidget
 import pyqtgraph as pg
 
 class Hand3DViewer(gl.GLViewWidget):
@@ -129,27 +130,6 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
 
-        # --- Sensor Graph ---
-        self.graph = pg.PlotWidget()
-        self.graph.setBackground("k")
-        self.graph.showGrid(x=True, y=True)
-
-        self.graph.addLegend()
-
-        layout.addWidget(self.graph)
-
-        self.gyro_curve_x = self.graph.plot(pen=pg.mkPen('r', width=1), name="Gyro X")
-        self.gyro_curve_y = self.graph.plot(pen=pg.mkPen('g', width=1), name="Gyro Y")
-        self.gyro_curve_z = self.graph.plot(pen=pg.mkPen('b', width=1), name="Gyro Z")
-
-        self.accel_curve_x = self.graph.plot(pen=pg.mkPen('y', width=1), name="Accel X")
-        self.accel_curve_y = self.graph.plot(pen=pg.mkPen('m', width=1), name="Accel Y")
-        self.accel_curve_z = self.graph.plot(pen=pg.mkPen('c', width=1), name="Accel Z")
-
-        # vertikale Frame Linie
-        self.frame_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('w'))
-        self.graph.addItem(self.frame_line)
-
         self.time_label = QtWidgets.QLabel("00:00 / 00:00")
 
         toolbar.addWidget(self.step_back_button)
@@ -164,7 +144,22 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.slider.sliderMoved.connect(self.seek_position)
 
         layout.addWidget(self.viewer, stretch=3)
-        layout.addWidget(self.graph, stretch=1)
+        self.sensor_widget = SensorPlotWidget()
+        layout.addWidget(self.sensor_widget, stretch=2)
+
+        # Sensoren hinzufügen
+        self.sensor_widget.add_sensor_curve("Gyro X", 'r')
+        self.sensor_widget.add_sensor_curve("Gyro Y", 'g')
+        self.sensor_widget.add_sensor_curve("Gyro Z", 'b')
+        self.sensor_widget.add_sensor_curve("Accel X", 'y')
+        self.sensor_widget.add_sensor_curve("Accel Y", 'm')
+        self.sensor_widget.add_sensor_curve("Accel Z", 'c')
+
+        def on_graph_click(frame, values):
+            print(f"Frame {frame}: {values}")
+
+        self.sensor_widget.click_callback(on_graph_click)
+
 
         # Pose Provider
         self.pose_provider = pose_provider
@@ -210,9 +205,20 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
 
             dt = self.timer.interval() / 1000.0
             self.replay.update(dt)
+            frame = self.replay.current_index
+            self.sensor_widget.set_cursor(frame)
 
             sensors = self.replay.get_current_sensors()
             pose = self.estimator.compute_pose(sensors)
+
+            # Gyro & Accel aktualisieren
+            sensors = self.replay.data[frame]["sensors"]
+            self.sensor_widget.update_data("Gyro X", list(range(len(self.replay.data))),  [s["sensors"]["gyro"][0] for s in self.replay.data])
+            self.sensor_widget.update_data("Gyro Y", list(range(len(self.replay.data))),  [s["sensors"]["gyro"][1] for s in self.replay.data])
+            self.sensor_widget.update_data("Gyro Z", list(range(len(self.replay.data))),  [s["sensors"]["gyro"][2] for s in self.replay.data])
+            self.sensor_widget.update_data("Accel X", list(range(len(self.replay.data))), [s["sensors"]["accel"][0] for s in self.replay.data])
+            self.sensor_widget.update_data("Accel Y", list(range(len(self.replay.data))), [s["sensors"]["accel"][1] for s in self.replay.data])
+            self.sensor_widget.update_data("Accel Z", list(range(len(self.replay.data))), [s["sensors"]["accel"][2] for s in self.replay.data])
 
             self.viewer.update_hand(pose)
 
@@ -223,7 +229,6 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
 
             self.update_time_label()
 
-            self.frame_line.setValue(self.replay.current_index)
 
     def update_time_label(self):
         if not self.replay:
@@ -327,7 +332,6 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             return
 
         self.replay = ReplayController(filename)
-        self._load_graph_data()
         self.slider.setMinimum(0)
         self.slider.setMaximum(self.replay.get_total_frames() - 1)
         config.MODE = "replay"
@@ -341,47 +345,7 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             self.source_button.setText("LIVE")
             self.replay = None   
 
-    def _load_graph_data(self):
-        if not self.replay:
-            return
-        print(self.replay.data[0])
-
-        frames = len(self.replay.data)
-
-        gyro_x = []
-        gyro_y = []
-        gyro_z = []
-
-        accel_x = []
-        accel_y = []
-        accel_z = []
-
-        for entry in self.replay.data:
-            sensors = entry["sensors"]
-
-            gx, gy, gz = sensors["gyro"]
-            ax, ay, az = sensors["accel"]
-
-            gyro_x.append(gx)
-            gyro_y.append(gy)
-            gyro_z.append(gz)
-
-            accel_x.append(ax)
-            accel_y.append(ay)
-            accel_z.append(az)
-
-        x_axis = list(range(frames))
-
-        self.gyro_curve_x.setData(x_axis, gyro_x)
-        self.gyro_curve_y.setData(x_axis, gyro_y)
-        self.gyro_curve_z.setData(x_axis, gyro_z)
-
-        self.accel_curve_x.setData(x_axis, accel_x)
-        self.accel_curve_y.setData(x_axis, accel_y)
-        self.accel_curve_z.setData(x_axis, accel_z)
-
-        self.graph.setXRange(0, frames)
-                            
+                          
 
 
 # ---------------------------------------------------------
