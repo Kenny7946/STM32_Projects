@@ -101,8 +101,8 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
 
-        layout = QtWidgets.QVBoxLayout()
-        central_widget.setLayout(layout)
+        main_layout = QtWidgets.QVBoxLayout()
+        central_widget.setLayout(main_layout)
 
         # === 3D Viewer ===
         self.viewer = Hand3DViewer()
@@ -143,9 +143,12 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.step_back_button.clicked.connect(self.step_backward)
         self.slider.sliderMoved.connect(self.seek_position)
 
-        layout.addWidget(self.viewer, stretch=3)
+        h_layout = QtWidgets.QHBoxLayout()
+        main_layout.addLayout(h_layout, stretch=1)
+
+        h_layout.addWidget(self.viewer, stretch=3)
         self.sensor_widget = SensorPlotWidget()
-        layout.addWidget(self.sensor_widget, stretch=2)
+        h_layout.addWidget(self.sensor_widget, stretch=2)
 
         # Sensoren hinzufügen
         self.sensor_widget.add_sensor_curve("Gyro X", 'r')
