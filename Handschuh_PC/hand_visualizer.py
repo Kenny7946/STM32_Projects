@@ -97,12 +97,26 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.replay = None
         self.estimator = HandPoseEstimator()
 
+        self.sensor_values = None
+
+        self.max_live_samples = 200
+        self.live_index = 0
+
+        self.live_buffer = {
+            "gyro_x": [],
+            "gyro_y": [],
+            "gyro_z": [],
+            "accel_x": [],
+            "accel_y": [],
+            "accel_z": []
+        }
+
         # === Zentrales Widget + Layout ===
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
 
-        layout = QtWidgets.QVBoxLayout()
-        central_widget.setLayout(layout)
+        main_layout = QtWidgets.QVBoxLayout()
+        central_widget.setLayout(main_layout)
 
         # === 3D Viewer ===
         self.viewer = Hand3DViewer()
@@ -143,9 +157,12 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         self.step_back_button.clicked.connect(self.step_backward)
         self.slider.sliderMoved.connect(self.seek_position)
 
-        layout.addWidget(self.viewer, stretch=3)
+        h_layout = QtWidgets.QHBoxLayout()
+        main_layout.addLayout(h_layout, stretch=1)
+        h_layout.addWidget(self.viewer, stretch=3)
+        
         self.sensor_widget = SensorPlotWidget()
-        layout.addWidget(self.sensor_widget, stretch=2)
+        h_layout.addWidget(self.sensor_widget, stretch=2)
 
         # Sensoren hinzufügen
         self.sensor_widget.add_sensor_curve("Gyro X", 'r')
@@ -191,17 +208,48 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
     # ==========================
     def _update_scene(self):
 
+        sensors = None
+
         # -------- LIVE --------
         if config.MODE == "live":
             if self.pose_provider:
                 pose = self.pose_provider()
+                
                 if pose:
                     self.viewer.update_hand(pose)
-            return
+            
+            sensors = self.sensor_values
+            if sensors:
+                # --- Live Buffer füllen ---
+                self.live_buffer["gyro_x"].append(sensors["gyro"][0])
+                self.live_buffer["gyro_y"].append(sensors["gyro"][1])
+                self.live_buffer["gyro_z"].append(sensors["gyro"][2])
 
+                self.live_buffer["accel_x"].append(sensors["accel"][0])
+                self.live_buffer["accel_y"].append(sensors["accel"][1])
+                self.live_buffer["accel_z"].append(sensors["accel"][2])
 
+                # Älteste Werte entfernen wenn > max_live_samples
+                for key in self.live_buffer:
+                    if len(self.live_buffer[key]) > self.max_live_samples:
+                        self.live_buffer[key].pop(0)
+
+                # X-Achse erzeugen (0..N-1)
+                x_vals = list(range(len(self.live_buffer["gyro_x"])))
+
+                # --- Sensorplots aktualisieren ---
+                self.sensor_widget.update_data("Gyro X", x_vals, self.live_buffer["gyro_x"])
+                self.sensor_widget.update_data("Gyro Y", x_vals, self.live_buffer["gyro_y"])
+                self.sensor_widget.update_data("Gyro Z", x_vals, self.live_buffer["gyro_z"])
+
+                self.sensor_widget.update_data("Accel X", x_vals, self.live_buffer["accel_x"])
+                self.sensor_widget.update_data("Accel Y", x_vals, self.live_buffer["accel_y"])
+                self.sensor_widget.update_data("Accel Z", x_vals, self.live_buffer["accel_z"])
+
+            return 
+    
         # -------- REPLAY --------
-        if config.MODE == "replay" and self.replay:
+        elif config.MODE == "replay" and self.replay:
 
             dt = self.timer.interval() / 1000.0
             self.replay.update(dt)
@@ -210,17 +258,16 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
 
             sensors = self.replay.get_current_sensors()
             pose = self.estimator.compute_pose(sensors)
+            self.viewer.update_hand(pose)
+            sensors = self.replay.data[frame]["sensors"]
 
             # Gyro & Accel aktualisieren
-            sensors = self.replay.data[frame]["sensors"]
             self.sensor_widget.update_data("Gyro X", list(range(len(self.replay.data))),  [s["sensors"]["gyro"][0] for s in self.replay.data])
             self.sensor_widget.update_data("Gyro Y", list(range(len(self.replay.data))),  [s["sensors"]["gyro"][1] for s in self.replay.data])
             self.sensor_widget.update_data("Gyro Z", list(range(len(self.replay.data))),  [s["sensors"]["gyro"][2] for s in self.replay.data])
             self.sensor_widget.update_data("Accel X", list(range(len(self.replay.data))), [s["sensors"]["accel"][0] for s in self.replay.data])
             self.sensor_widget.update_data("Accel Y", list(range(len(self.replay.data))), [s["sensors"]["accel"][1] for s in self.replay.data])
-            self.sensor_widget.update_data("Accel Z", list(range(len(self.replay.data))), [s["sensors"]["accel"][2] for s in self.replay.data])
-
-            self.viewer.update_hand(pose)
+            self.sensor_widget.update_data("Accel Z", list(range(len(self.replay.data))), [s["sensors"]["accel"][2] for s in self.replay.data])        
 
             # Slider Update
             self.slider.blockSignals(True)

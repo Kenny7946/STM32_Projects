@@ -21,7 +21,7 @@ import config
 # Shared Queue für Sensoren
 # -------------------------------
 sensor_queue = Queue(maxsize=10)  # Puffer für BLE-Daten
-
+window = None
 
 # -------------------------------
 # BLE Callback
@@ -50,12 +50,12 @@ live_sensor_provider = LiveSensorProvider(sensor_queue)
 
 def pose_provider():
     try:
-        if config.MODE != "live":
-            return None
-
         sensors = live_sensor_provider.get_next()
         if sensors is None:
             return None
+        
+        if config.MODE == "live":
+            window.sensor_values = sensors
 
         pose = estimator.compute_pose(sensors)
 
@@ -103,6 +103,7 @@ def main():
     app.aboutToQuit.connect(logger.close)
 
     # Visualizer starten
+    global window
     window = HandTrackingWindow(pose_provider)
     window.set_logger(logger)
     window.show()
