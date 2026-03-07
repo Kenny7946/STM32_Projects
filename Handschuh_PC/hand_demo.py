@@ -1,10 +1,8 @@
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import Point3, NodePath, DirectionalLight, AmbientLight
-from panda3d.core import GeomNode
 from direct.actor.Actor import Actor
 import numpy as np
 
-# Beispielpose (4 Gelenke pro Finger)
 example_pose = {
     "index": [np.array([0.02,0,0]), np.array([0.04,0.03,-0.03]),
               np.array([0.03,0.03,-0.05]), np.array([0.01,0.02,-0.06])],
@@ -30,36 +28,82 @@ class HandViewer(ShowBase):
         dlnp = self.render.attachNewNode(dlight)
         dlnp.setHpr(45,-45,0)
         self.render.setLight(dlnp)
+
         alight = AmbientLight("alight")
         alight.setColor((0.3,0.3,0.3,1))
         self.render.setLight(self.render.attachNewNode(alight))
 
-        # Mesh laden
+        # Handmodell
         self.hand_mesh = Actor(model_path)
         self.hand_mesh.reparentTo(self.render)
         self.hand_mesh.setScale(1)
 
-        # Gelenk-Visualisierung: kleine Kugeln für jeden Joint
+        # Gelenke
         self.joint_nodes = {}
         for finger, joints in example_pose.items():
             self.joint_nodes[finger] = []
             for i in range(len(joints)):
                 np_node = self.render.attachNewNode(f"{finger}_{i}")
-                sphere = loader.loadModel("models/misc/sphere")  # Panda3D Standardkugel
+                sphere = loader.loadModel("models/misc/sphere")
                 sphere.reparentTo(np_node)
                 sphere.setScale(0.005)
-                sphere.setColor(1,0,0,1)  # rot
+                sphere.setColor(1,0,0,1)
                 self.joint_nodes[finger].append(np_node)
 
+        # Kamera-Orbit-Variablen
+        self.orbit_center = Point3(0,0,0)
+        self.orbit_distance = 7
+        self.orbit_angle_h = 0
+        self.orbit_angle_v = 20
+        self.mouse_sensitivity = 0.2
+        self.prev_mouse_x = None
+        self.prev_mouse_y = None
+
+        self.accept("wheel_up", self.zoom_in)
+        self.accept("wheel_down", self.zoom_out)
+
         self.taskMgr.add(self.update_task, "update_task")
+        self.taskMgr.add(self.camera_task, "camera_task")
 
     def update_task(self, task):
-        # Gelenke setzen
         for finger, joints in example_pose.items():
             for i, pos in enumerate(joints):
                 self.joint_nodes[finger][i].setPos(Point3(*pos))
         return task.cont
 
-# Pfad zu deinem Modell
+    def camera_task(self, task):
+        if base.mouseWatcherNode.hasMouse() and base.mouseWatcherNode.isButtonDown("mouse1"):
+            pointer = base.win.getPointer(0)  # absolute Pixel-Position
+            x = pointer.getX()
+            y = pointer.getY()
+
+            if self.prev_mouse_x is not None and self.prev_mouse_y is not None:
+                dx = x - self.prev_mouse_x
+                dy = y - self.prev_mouse_y
+                self.orbit_angle_h += dx * self.mouse_sensitivity
+                self.orbit_angle_v = np.clip(self.orbit_angle_v + dy * self.mouse_sensitivity, -89, 89)
+
+            self.prev_mouse_x = x
+            self.prev_mouse_y = y
+        else:
+            self.prev_mouse_x = None
+            self.prev_mouse_y = None
+
+        # Kamera-Position berechnen
+        rad_h = np.radians(self.orbit_angle_h)
+        rad_v = np.radians(self.orbit_angle_v)
+        x = self.orbit_center.x + self.orbit_distance * np.cos(rad_v) * np.sin(rad_h)
+        y = self.orbit_center.y + self.orbit_distance * np.cos(rad_v) * np.cos(rad_h)
+        z = self.orbit_center.z + self.orbit_distance * np.sin(rad_v)
+        self.camera.setPos(x, y, z)
+        self.camera.lookAt(self.orbit_center)
+        return task.cont
+
+    def zoom_in(self):
+        self.orbit_distance = max(0.5, self.orbit_distance - 0.3)
+
+    def zoom_out(self):
+        self.orbit_distance += 0.3
+
 viewer = HandViewer("model/realistic_hand.glb")
 viewer.run()
