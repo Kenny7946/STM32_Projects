@@ -11,19 +11,20 @@ from hand_pose_estimator import HandPoseEstimator
 from sensor_plot_widget import SensorPlotWidget
 import pyqtgraph as pg
 
+import numpy as np
+import pyqtgraph as pg
+import pyqtgraph.opengl as gl
+import numpy as np
+import pyqtgraph as pg
+import pyqtgraph.opengl as gl
+from pyqtgraph.opengl import MeshData
+
+
 class Hand3DViewer(gl.GLViewWidget):
-    """
-    OpenGL Viewer für Handtracking.
-    Erwartet Pose-Format:
-    {
-        "finger": [np.array([x,y,z]), ...]
-    }
-    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Kamera
         self.setCameraPosition(distance=0.3)
         self.opts['center'] = pg.Vector(0, 0.05, 0)
 
@@ -58,26 +59,121 @@ class Hand3DViewer(gl.GLViewWidget):
         )
         self.addItem(z_axis)
 
-        self.finger_lines = {}
+        self.joint_meshes = {}
+        self.bone_meshes = {}
+
+        self.finger_colors = {
+            "thumb": (1, 0.6, 0.2, 1),
+            "index": (0.2, 0.6, 1, 1),
+            "middle": (0.2, 1, 0.4, 1),
+            "ring": (1, 0.2, 1, 1),
+            "pinky": (1, 0.3, 0.3, 1),
+        }
+
+        self.joint_radius = 0.004
+        self.bone_radius = 0.002
+
+    def create_joint(self, pos, color):
+
+        meshdata = MeshData.sphere(rows=10, cols=10, radius=self.joint_radius)
+
+        item = gl.GLMeshItem(
+            meshdata=meshdata,
+            smooth=True,
+            color=color,
+            shader="shaded",
+        )
+
+        item.translate(*pos)
+        self.addItem(item)
+
+        return item
+
+    def create_bone(self, p1, p2, color):
+
+        length = np.linalg.norm(p2 - p1)
+
+        meshdata = MeshData.cylinder(
+            rows=10,
+            cols=20,
+            radius=[self.bone_radius, self.bone_radius],
+            length=length
+        )
+
+        item = gl.GLMeshItem(
+            meshdata=meshdata,
+            smooth=True,
+            color=color,
+            shader="shaded",
+        )
+
+        self.align_bone(item, p1, p2)
+
+        self.addItem(item)
+
+        return item
+
+    def align_bone(self, item, p1, p2):
+
+        vec = p2 - p1
+        length = np.linalg.norm(vec)
+
+        if length == 0:
+            return
+
+        direction = vec / length
+        z_axis = np.array([0, 0, 1])
+
+        axis = np.cross(z_axis, direction)
+        angle = np.degrees(np.arccos(np.clip(np.dot(z_axis, direction), -1, 1)))
+
+        item.resetTransform()
+
+        if np.linalg.norm(axis) > 1e-6:
+            item.rotate(angle, *axis)
+
+        item.translate(*p1)
 
     def update_hand(self, pose: dict):
-        """Aktualisiert die Darstellung."""
+
         if pose is None:
             return
 
         for finger, joints in pose.items():
-            points = np.array(joints)
 
-            if finger not in self.finger_lines:
-                line = gl.GLLinePlotItem(
-                    pos=points,
-                    width=4,
-                    antialias=True,
-                )
-                self.finger_lines[finger] = line
-                self.addItem(line)
-            else:
-                self.finger_lines[finger].setData(pos=points)
+            joints = np.array(joints)
+            color = self.finger_colors.get(finger, (1, 1, 1, 1))
+
+            # joints
+            for i, joint in enumerate(joints):
+
+                key = f"{finger}_joint_{i}"
+
+                if key not in self.joint_meshes:
+
+                    self.joint_meshes[key] = self.create_joint(joint, color)
+
+                else:
+
+                    item = self.joint_meshes[key]
+                    item.resetTransform()
+                    item.translate(*joint)
+
+            # bones
+            for i in range(len(joints) - 1):
+
+                p1 = joints[i]
+                p2 = joints[i + 1]
+
+                key = f"{finger}_bone_{i}"
+
+                if key not in self.bone_meshes:
+
+                    self.bone_meshes[key] = self.create_bone(p1, p2, color)
+
+                else:
+
+                    self.align_bone(self.bone_meshes[key], p1, p2)
 
 
 class HandTrackingWindow(QtWidgets.QMainWindow):
