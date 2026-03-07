@@ -25,13 +25,13 @@ class HandViewer(ShowBase):
 
         # Licht
         dlight = DirectionalLight("dlight")
-        dlight.setColor((1,1,1,1))
+        dlight.setColor((2,2,2,1))
         dlnp = self.render.attachNewNode(dlight)
         dlnp.setHpr(45,-45,0)
         self.render.setLight(dlnp)
 
         alight = AmbientLight("alight")
-        alight.setColor((0.3,0.3,0.3,1))
+        alight.setColor((0.6,0.6,0.6,1))
         self.render.setLight(self.render.attachNewNode(alight))
 
         # Handmodell
