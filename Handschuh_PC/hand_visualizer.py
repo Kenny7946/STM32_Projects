@@ -201,6 +201,8 @@ class Hand3DViewer(gl.GLViewWidget):
 
         if pose is None:
             return
+        
+        print(f"Pose: {pose}")
 
         self.update_palm(pose)
 

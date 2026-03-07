@@ -2,6 +2,7 @@ from direct.showbase.ShowBase import ShowBase
 from panda3d.core import Point3, NodePath, DirectionalLight, AmbientLight
 from direct.actor.Actor import Actor
 import numpy as np
+import time
 
 example_pose = {
     "index": [np.array([0.02,0,0]), np.array([0.04,0.03,-0.03]),
@@ -38,7 +39,29 @@ class HandViewer(ShowBase):
         self.hand_mesh.reparentTo(self.render)
         self.hand_mesh.setScale(1)
 
-        # Gelenke
+        # Nach dem Laden des Actors
+        self.bones = {}
+
+        # Index-Finger
+        self.bones["index_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'IndexF_lower')
+        self.bones["index_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'IndexF_middle')
+        self.bones["index_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'IndexF_tip')
+
+        # Middle-Finger
+        self.bones["middle_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'MiddleF_lower')
+        self.bones["middle_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'MiddleF_middle')
+        self.bones["middle_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'MiddleF_tip')
+
+        # Ring-Finger
+        self.bones["ring_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'RingF_lower')
+        self.bones["ring_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'RingF_middle')
+        self.bones["ring_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'RingF_tip')
+
+        # Pinky-Finger
+        self.bones["pinky_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'PinkyF_lower')
+        self.bones["pinky_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'PinkyF_middle')
+        self.bones["pinky_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'PinkyF_tip')
+
         self.joint_nodes = {}
         for finger, joints in example_pose.items():
             self.joint_nodes[finger] = []
@@ -67,9 +90,25 @@ class HandViewer(ShowBase):
         self.taskMgr.add(self.camera_task, "camera_task")
 
     def update_task(self, task):
-        for finger, joints in example_pose.items():
-            for i, pos in enumerate(joints):
-                self.joint_nodes[finger][i].setPos(Point3(*pos))
+        t = task.time
+
+        # ---- Index-Finger leicht wippen ----
+        self.bones["index_lower"].setHpr(
+            self.bones["index_lower"].getHpr().x,
+            self.bones["index_lower"].getHpr().y + 0*np.sin(t),
+            self.bones["index_lower"].getHpr().z
+        )
+        self.bones["index_middle"].setHpr(
+            self.bones["index_middle"].getHpr().x,
+            self.bones["index_middle"].getHpr().y + 0.008*np.sin(t),
+            self.bones["index_middle"].getHpr().z
+        )
+        self.bones["index_tip"].setHpr(
+            self.bones["index_tip"].getHpr().x,
+            self.bones["index_tip"].getHpr().y + 0.00*np.sin(t),
+            self.bones["index_tip"].getHpr().z
+        )
+
         return task.cont
 
     def camera_task(self, task):
