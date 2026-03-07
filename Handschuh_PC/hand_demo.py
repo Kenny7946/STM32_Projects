@@ -50,12 +50,13 @@ class HandViewer(ShowBase):
                 sphere.setColor(1,0,0,1)
                 self.joint_nodes[finger].append(np_node)
 
-        # Kamera-Orbit-Variablen
+        # Kamera-Orbit/Pan-Variablen
         self.orbit_center = Point3(0,0,0)
         self.orbit_distance = 7
         self.orbit_angle_h = 0
         self.orbit_angle_v = 20
         self.mouse_sensitivity = 0.2
+        self.pan_sensitivity = 0.005
         self.prev_mouse_x = None
         self.prev_mouse_y = None
 
@@ -72,31 +73,46 @@ class HandViewer(ShowBase):
         return task.cont
 
     def camera_task(self, task):
-        if base.mouseWatcherNode.hasMouse() and base.mouseWatcherNode.isButtonDown("mouse1"):
-            pointer = base.win.getPointer(0)  # absolute Pixel-Position
-            x = pointer.getX()
-            y = pointer.getY()
+        pointer = base.win.getPointer(0)
+        x = pointer.getX()
+        y = pointer.getY()
 
+        # Orbit (linke Maustaste)
+        if base.mouseWatcherNode.isButtonDown("mouse1"):
             if self.prev_mouse_x is not None and self.prev_mouse_y is not None:
                 dx = x - self.prev_mouse_x
                 dy = y - self.prev_mouse_y
                 self.orbit_angle_h += dx * self.mouse_sensitivity
                 self.orbit_angle_v = np.clip(self.orbit_angle_v + dy * self.mouse_sensitivity, -89, 89)
+            self.prev_mouse_x = x
+            self.prev_mouse_y = y
 
+        # Pan (rechte Maustaste)
+        elif base.mouseWatcherNode.isButtonDown("mouse3"):
+            if self.prev_mouse_x is not None and self.prev_mouse_y is not None:
+                dx = x - self.prev_mouse_x
+                dy = y - self.prev_mouse_y
+                # Kamera-Panning relativ zur aktuellen Ansicht
+                right = self.camera.getQuat(self.render).getRight()
+                up = self.camera.getQuat(self.render).getUp()
+                self.orbit_center += -right * dx * self.pan_sensitivity
+                self.orbit_center += up * dy * self.pan_sensitivity
             self.prev_mouse_x = x
             self.prev_mouse_y = y
         else:
+            # keine Taste gedrückt
             self.prev_mouse_x = None
             self.prev_mouse_y = None
 
         # Kamera-Position berechnen
         rad_h = np.radians(self.orbit_angle_h)
         rad_v = np.radians(self.orbit_angle_v)
-        x = self.orbit_center.x + self.orbit_distance * np.cos(rad_v) * np.sin(rad_h)
-        y = self.orbit_center.y + self.orbit_distance * np.cos(rad_v) * np.cos(rad_h)
-        z = self.orbit_center.z + self.orbit_distance * np.sin(rad_v)
-        self.camera.setPos(x, y, z)
+        cam_x = self.orbit_center.x + self.orbit_distance * np.cos(rad_v) * np.sin(rad_h)
+        cam_y = self.orbit_center.y + self.orbit_distance * np.cos(rad_v) * np.cos(rad_h)
+        cam_z = self.orbit_center.z + self.orbit_distance * np.sin(rad_v)
+        self.camera.setPos(cam_x, cam_y, cam_z)
         self.camera.lookAt(self.orbit_center)
+
         return task.cont
 
     def zoom_in(self):
