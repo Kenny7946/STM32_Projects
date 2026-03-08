@@ -1,19 +1,7 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import Point3, NodePath, DirectionalLight, AmbientLight
+from panda3d.core import Point3, NodePath, DirectionalLight, AmbientLight, LineSegs
 from direct.actor.Actor import Actor
 import numpy as np
-import time
-
-example_pose = {
-    "index": [np.array([0.02,0,0]), np.array([0.04,0.03,-0.03]),
-              np.array([0.03,0.03,-0.05]), np.array([0.01,0.02,-0.06])],
-    "middle":[np.array([0.03,0,0]), np.array([0.05,0.02,-0.03]),
-              np.array([0.04,0.01,-0.06]), np.array([0.02,0.007,-0.067])],
-    "ring":[np.array([0.035,-0.007,0]), np.array([0.057,0,-0.035]),
-            np.array([0.046,-0.004,-0.061]), np.array([0.029,-0.011,-0.064])],
-    "pinky":[np.array([0.038,-0.027,0]), np.array([0.056,-0.02,-0.028]),
-             np.array([0.049,-0.024,-0.046]), np.array([0.032,-0.031,-0.049])]
-}
 
 class HandViewer(ShowBase):
     def __init__(self, model_path):
@@ -34,44 +22,49 @@ class HandViewer(ShowBase):
         alight.setColor((0.6,0.6,0.6,1))
         self.render.setLight(self.render.attachNewNode(alight))
 
-        # Handmodell
+        # Handmodell laden
         self.hand_mesh = Actor(model_path)
         self.hand_mesh.reparentTo(self.render)
         self.hand_mesh.setScale(1)
 
-        # Nach dem Laden des Actors
+        # Bones kontrollieren
         self.bones = {}
+        finger_bone_names = {
+            "index": ["IndexF_lower","IndexF_middle","IndexF_tip"],
+            "middle": ["MiddleF_lower","MiddleF_middle","MiddleF_tip"],
+            "ring": ["RingF_lower","RingF_middle","RingF_tip"],
+            "pinky": ["PinkyF_lower","PinkyF_middle","PinkyF_tip"]
+        }
 
-        # Index-Finger
-        self.bones["index_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'IndexF_lower')
-        self.bones["index_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'IndexF_middle')
-        self.bones["index_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'IndexF_tip')
+        for finger, names in finger_bone_names.items():
+            for name in names:
+                self.bones[name] = self.hand_mesh.controlJoint(None, 'modelRoot', name)
 
-        # Middle-Finger
-        self.bones["middle_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'MiddleF_lower')
-        self.bones["middle_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'MiddleF_middle')
-        self.bones["middle_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'MiddleF_tip')
+        # Skelett-Kugeln und Linien erzeugen
+        self.bone_spheres = {}
+        self.bone_lines = LineSegs()
+        self.bone_lines.setThickness(2.0)
+        self.bone_lines.setColor(0,1,0,1)  # grün für Linien
 
-        # Ring-Finger
-        self.bones["ring_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'RingF_lower')
-        self.bones["ring_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'RingF_middle')
-        self.bones["ring_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'RingF_tip')
+        for bone_name, joint in self.bones.items():
+            # Kugel für das Bone
+            sphere = loader.loadModel("models/misc/sphere")
+            sphere.reparentTo(joint)
+            sphere.setScale(0.01)
+            sphere.setColor(1,0,0,1)  # rot
+            self.bone_spheres[bone_name] = sphere
 
-        # Pinky-Finger
-        self.bones["pinky_lower"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'PinkyF_lower')
-        self.bones["pinky_middle"] = self.hand_mesh.controlJoint(None, 'modelRoot', 'PinkyF_middle')
-        self.bones["pinky_tip"]    = self.hand_mesh.controlJoint(None, 'modelRoot', 'PinkyF_tip')
+        # Linien zwischen Bones
+        for finger, names in finger_bone_names.items():
+            for i in range(len(names)-1):
+                child = self.bones[names[i+1]]
+                parent = self.bones[names[i]]
+                # Linie relativ zum render (global)
+                self.bone_lines.moveTo(parent.getPos(self.render))
+                self.bone_lines.drawTo(child.getPos(self.render))
 
-        self.joint_nodes = {}
-        for finger, joints in example_pose.items():
-            self.joint_nodes[finger] = []
-            for i in range(len(joints)):
-                np_node = self.render.attachNewNode(f"{finger}_{i}")
-                sphere = loader.loadModel("models/misc/sphere")
-                sphere.reparentTo(np_node)
-                sphere.setScale(0.005)
-                sphere.setColor(1,0,0,1)
-                self.joint_nodes[finger].append(np_node)
+        # NodePath für Linien
+        self.skeleton_lines = self.render.attachNewNode(self.bone_lines.create())
 
         # Kamera-Orbit/Pan-Variablen
         self.orbit_center = Point3(0,0,0)
@@ -92,22 +85,43 @@ class HandViewer(ShowBase):
     def update_task(self, task):
         t = task.time
 
-        # ---- Index-Finger leicht wippen ----
-        self.bones["index_lower"].setHpr(
-            self.bones["index_lower"].getHpr().x,
-            self.bones["index_lower"].getHpr().y + 0*np.sin(t),
-            self.bones["index_lower"].getHpr().z
+        # Beispiel Finger-Bewegung (Index Finger leicht wippen)
+        self.bones["IndexF_lower"].setHpr(
+            self.bones["IndexF_lower"].getHpr().x,
+            self.bones["IndexF_lower"].getHpr().y + 0*np.sin(t),
+            self.bones["IndexF_lower"].getHpr().z
         )
-        self.bones["index_middle"].setHpr(
-            self.bones["index_middle"].getHpr().x,
-            self.bones["index_middle"].getHpr().y + 0.008*np.sin(t),
-            self.bones["index_middle"].getHpr().z
+        self.bones["IndexF_middle"].setHpr(
+            self.bones["IndexF_middle"].getHpr().x,
+            self.bones["IndexF_middle"].getHpr().y + 0.008*np.sin(t),
+            self.bones["IndexF_middle"].getHpr().z
         )
-        self.bones["index_tip"].setHpr(
-            self.bones["index_tip"].getHpr().x,
-            self.bones["index_tip"].getHpr().y + 0.00*np.sin(t),
-            self.bones["index_tip"].getHpr().z
+        self.bones["IndexF_tip"].setHpr(
+            self.bones["IndexF_tip"].getHpr().x,
+            self.bones["IndexF_tip"].getHpr().y + 0*np.sin(t),
+            self.bones["IndexF_tip"].getHpr().z
         )
+
+        # Linien aktualisieren
+        self.bone_lines.reset()
+        self.bone_lines.setThickness(2.0)
+        self.bone_lines.setColor(0,1,0,1)
+        finger_bone_names = {
+            "index": ["IndexF_lower","IndexF_middle","IndexF_tip"],
+            "middle": ["MiddleF_lower","MiddleF_middle","MiddleF_tip"],
+            "ring": ["RingF_lower","RingF_middle","RingF_tip"],
+            "pinky": ["PinkyF_lower","PinkyF_middle","PinkyF_tip"]
+        }
+        for finger, names in finger_bone_names.items():
+            for i in range(len(names)-1):
+                parent = self.bones[names[i]]
+                child = self.bones[names[i+1]]
+                self.bone_lines.moveTo(parent.getPos(self.render))
+                self.bone_lines.drawTo(child.getPos(self.render))
+
+        # Update Linien NodePath
+        self.skeleton_lines.removeNode()
+        self.skeleton_lines = self.render.attachNewNode(self.bone_lines.create())
 
         return task.cont
 
@@ -131,7 +145,6 @@ class HandViewer(ShowBase):
             if self.prev_mouse_x is not None and self.prev_mouse_y is not None:
                 dx = x - self.prev_mouse_x
                 dy = y - self.prev_mouse_y
-                # Kamera-Panning relativ zur aktuellen Ansicht
                 right = self.camera.getQuat(self.render).getRight()
                 up = self.camera.getQuat(self.render).getUp()
                 self.orbit_center += -right * dx * self.pan_sensitivity
@@ -139,7 +152,6 @@ class HandViewer(ShowBase):
             self.prev_mouse_x = x
             self.prev_mouse_y = y
         else:
-            # keine Taste gedrückt
             self.prev_mouse_x = None
             self.prev_mouse_y = None
 
@@ -159,6 +171,7 @@ class HandViewer(ShowBase):
 
     def zoom_out(self):
         self.orbit_distance += 0.3
+
 
 viewer = HandViewer("model/realistic_hand.glb")
 viewer.run()
