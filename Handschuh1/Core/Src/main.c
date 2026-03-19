@@ -127,13 +127,13 @@ int main(void)
   MX_I2C3_Init();
   MX_RF_Init();
   /* USER CODE BEGIN 2 */
-  while(1)
-  {
+
+
 	  if (HAL_I2C_IsDeviceReady(&hi2c3, SLAVE_ADDR << 1, 3, 100) == HAL_OK)
 		printf("Slave antwortet\r\n");
 	else
 		printf("Kein Geraet gefunden\r\n");
-  }
+
 
 
 	bno055_assignI2C(&hi2c3);
@@ -281,7 +281,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -294,7 +294,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
