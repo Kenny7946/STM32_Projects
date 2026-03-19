@@ -25,7 +25,6 @@ class HandViewer(ShowBase):
         # Handmodell laden
         self.hand_mesh = Actor(model_path)
         self.hand_mesh.reparentTo(self.render)
-        self.hand_mesh.setScale(1)
 
         # Bones kontrollieren
         self.bones = {}
@@ -62,6 +61,35 @@ class HandViewer(ShowBase):
                 # Linie relativ zum render (global)
                 self.bone_lines.moveTo(parent.getPos(self.render))
                 self.bone_lines.drawTo(child.getPos(self.render))
+
+        # -----------------------------
+        # 1️⃣ Mesh-Informationen
+        # -----------------------------
+        mesh_np = self.hand_mesh.find('**/+GeomNode')
+        if not mesh_np.isEmpty():
+            min_bound, max_bound = mesh_np.getTightBounds()
+            size_vec = max_bound - min_bound
+            max_dim = max(size_vec.x, size_vec.y, size_vec.z)
+            
+            print("=== Mesh Info ===")
+            print("Min bound:", min_bound)
+            print("Max bound:", max_bound)
+            print("Size vector:", size_vec)
+            print("Max Dimension:", max_dim)
+            print("Mesh Scale:", mesh_np.getScale())
+
+        # -----------------------------
+        # 2️⃣ Bone-Informationen
+        # -----------------------------
+        print("\n=== Bone Info ===")
+        for name, joint in self.bones.items():
+            # Lokale Position im Actor
+            pos_local = joint.getPos()
+            # Welt-Position
+            pos_world = joint.getPos(self.render)
+            print(f"{name}: Local Pos = {pos_local}, World Pos = {pos_world}")
+
+
 
         # NodePath für Linien
         self.skeleton_lines = self.render.attachNewNode(self.bone_lines.create())
