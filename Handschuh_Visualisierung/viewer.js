@@ -1,6 +1,6 @@
-import * as THREE from './three/three.module.js';
-import { OrbitControls } from './three/OrbitControls.js';
-import { GLTFLoader } from './three/GLTFLoader.js';
+import * as THREE from './three/build/three.module.js';
+import { OrbitControls } from './three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from './three/examples/jsm/loaders/GLTFLoader.js';
 
 console.log("Hallo");  // MUSS in der Konsole erscheinen
 

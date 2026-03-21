@@ -35,6 +35,7 @@ browser = QWebEngineView()
 window.setCentralWidget(browser)
 
 # Lade HTML über HTTP, nicht file://
+#browser.load(QUrl(f"http://localhost:{PORT}/three/examples/viewer.html"))
 browser.load(QUrl(f"http://localhost:{PORT}/viewer.html"))
 
 window.show()
