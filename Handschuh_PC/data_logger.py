@@ -50,7 +50,7 @@ class HandTrackingLogger:
             serialized[finger] = [j.tolist() if isinstance(j, np.ndarray) else j for j in joints]
         return serialized
 
-    def log(self, sensors, pose=None, position=None):
+    def log(self, sensors, angles, pose=None, position=None):
         if not self.enabled or self.file is None:
             return
 
@@ -60,6 +60,7 @@ class HandTrackingLogger:
             "position": position.tolist() if isinstance(position, np.ndarray) else position,
             "sensors": sensors,
             "pose": self._serialize_pose(pose),
+            "angles": angles
         }
         self.file.write(json.dumps(entry) + "\n")
 

@@ -57,10 +57,11 @@ def pose_provider():
         if config.MODE == "live":
             window.sensor_values = sensors
 
-        pose = estimator.compute_pose(sensors)
+        pose, angles = estimator.compute_pose(sensors)
 
         logger.log(
             sensors=sensors,
+            angles=angles,
             pose=pose,
             position=None
         )

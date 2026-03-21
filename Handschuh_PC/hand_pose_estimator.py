@@ -113,11 +113,13 @@ class HandPoseEstimator:
         ]
 
         pose = {}
+        angles = {}
 
         hand_rot = self._rotation_from_sensor(sensor_data)
 
         for idx, finger in enumerate(self.finger_lengths.keys()):
             angle = self.adc_to_angle(adc_values[idx], idx)
+            angles[finger] = angle
 
             start = hand_position + hand_rot.apply(self.finger_bases[finger])
 
@@ -131,5 +133,5 @@ class HandPoseEstimator:
 
             pose[finger] = joints_world
 
-        return pose
+        return pose, angles
     
