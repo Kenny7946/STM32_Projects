@@ -5,34 +5,27 @@ import { SkeletonHelper } from './three/src/helpers/SkeletonHelper.js'; // Für 
 
 console.log("Hallo");
 
-// Szene und Kamera
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222222);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 camera.position.set(0, 0, 0.3);
 
-// Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
-// Licht
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5,5,5);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-// Clock für Animationen
-const clock = new THREE.Clock();
+let skeleton;        // Aktuelles Skeleton
+let selectedBone;    // Bone, den wir mit Keys steuern
 
-// Mixer für Animationen
-let mixer;
-
-// Modell laden
+// GLTF laden
 const loader = new GLTFLoader();
 loader.load('./Hand_eigen.glb', (gltf) => {
     const hand = gltf.scene;
@@ -41,32 +34,55 @@ loader.load('./Hand_eigen.glb', (gltf) => {
 
     hand.traverse(obj => {
         if (obj.isSkinnedMesh) {
-            // Bones visualisieren
-            const skeletonHelper = new SkeletonHelper(obj.skeleton.bones[0]);
-            skeletonHelper.material.linewidth = 2;
-            scene.add(skeletonHelper);
+            skeleton = obj.skeleton;
 
-            console.log("Bones:", obj.skeleton.bones);
+            // Bones sichtbar machen
+            const helper = new SkeletonHelper(obj.skeleton.bones[0]);
+            scene.add(helper);
+
+            console.log("Bones:", skeleton.bones.map(b => b.name));
         }
     });
 
-    // Animationen einrichten
-    if (gltf.animations && gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(hand);
-        gltf.animations.forEach(clip => {
-            mixer.clipAction(clip).play();
-        });
-        console.log("Animationen gestartet:", gltf.animations.map(a => a.name));
+    // Wähle einen Bone zum Steuern, z.B. ersten Finger
+    selectedBone = skeleton.getBoneByName("IndexRoot");  // <--- Name anpassen
+    if (!selectedBone) {
+        console.warn("Bone nicht gefunden!");
+    }
+});
+
+// Rotation pro Tastendruck (in Radiant)
+const ROT_STEP = 0.1;
+
+// Key-Listener
+window.addEventListener('keydown', (event) => {
+    if (!selectedBone) return;
+
+    switch(event.key) {
+        case "ArrowUp":    // Bone nach oben rotieren
+            selectedBone.rotation.x -= ROT_STEP;
+            break;
+        case "ArrowDown":  // Bone nach unten rotieren
+            selectedBone.rotation.x += ROT_STEP;
+            break;
+        case "ArrowLeft":  // Bone nach links rotieren
+            selectedBone.rotation.y -= ROT_STEP;
+            break;
+        case "ArrowRight": // Bone nach rechts rotieren
+            selectedBone.rotation.y += ROT_STEP;
+            break;
+        case "q":          // Bone um Z positiv
+            selectedBone.rotation.z += ROT_STEP;
+            break;
+        case "e":          // Bone um Z negativ
+            selectedBone.rotation.z -= ROT_STEP;
+            break;
     }
 });
 
 // Animationsloop
 function animate() {
     requestAnimationFrame(animate);
-
-    const delta = clock.getDelta();
-    if (mixer) mixer.update(delta); // Animation aktualisieren
-
     controls.update();
     renderer.render(scene, camera);
 }
