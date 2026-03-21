@@ -115,46 +115,44 @@ function playHandLogs(skeleton, handRoot, logs, interval = 100) {
         setHandGlobalRotation(handRoot, log.sensors);
 
         // 2️⃣ Fingerpose
-        setHandPose(skeleton, log.pose);
+        setHandPose(skeleton, log.angles);
 
         index++;
     }, interval);
 }
 
 // Fingerpose setzen
-function setHandPose(skeleton, poseLog) {
+function setHandPose(skeleton, angleLog) {
     const fingers = ["thumb", "index", "middle", "ring", "pinky"];
     
     fingers.forEach(fingerName => {
-        const joints = poseLog[fingerName]; // Array von 3 oder 4 Vektoren
-        if (!joints) return;
+        const angle = angleLog[fingerName]; // EIN Winkel pro Finger
+        if (angle === undefined) return;
 
         // Bone-Namen passend zu deinem Skeleton
         let boneNames;
         switch(fingerName) {
-            case "thumb": boneNames = ["Bone002", "Bone003", "Bone003_end"]; break;
-            case "index": boneNames = ["IndexF_lower","IndexF_middle","IndexF_tip"]; break;
+            case "thumb":  boneNames = ["Bone002", "Bone003", "Bone003_end"]; break;
+            case "index":  boneNames = ["IndexF_lower","IndexF_middle","IndexF_tip"]; break;
             case "middle": boneNames = ["MiddleF_lower","MiddleF_middle","MiddleF_tip"]; break;
-            case "ring": boneNames = ["RingF_lower","RingF_middle","RingF_tip"]; break;
-            case "pinky": boneNames = ["PinkyF_lower","PinkyF_middle","PinkyF_tip"]; break;
+            case "ring":   boneNames = ["RingF_lower","RingF_middle","RingF_tip"]; break;
+            case "pinky":  boneNames = ["PinkyF_lower","PinkyF_middle","PinkyF_tip"]; break;
         }
 
-        for (let i = 0; i < boneNames.length; i++) {
-            const bone = skeleton.getBoneByName(boneNames[i]);
-            if (!bone) continue;
+        boneNames.forEach(boneName => {
+            const bone = skeleton.getBoneByName(boneName);
+            if (!bone) return;
 
-            if (i + 1 >= joints.length) break; // Nur wenn ein nächstes Gelenk existiert
+            // 👉 Rotation anwenden
+            // Annahme: Finger beugen um X-Achse
+            bone.rotation.z = angle;
 
-            const parent = new THREE.Vector3(...joints[i]);
-            const target = new THREE.Vector3(...joints[i + 1]);
-            const dir = new THREE.Vector3().subVectors(target, parent).normalize();
+            // Falls falsche Richtung:
+            // bone.rotation.x = -angle;
 
-            const quaternion = new THREE.Quaternion().setFromUnitVectors(
-                new THREE.Vector3(1, 0, 0), // Default Y-Achse der Bones
-                dir
-            );
-            bone.quaternion.copy(quaternion);
-        }
+            // Alternative Achsen testen:
+            // bone.rotation.z = angle;
+        });
     });
 }
 

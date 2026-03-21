@@ -424,7 +424,7 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
             self.sensor_widget.set_cursor(frame)
 
             sensors = self.replay.get_current_sensors()
-            pose = self.estimator.compute_pose(sensors)
+            pose,angles = self.estimator.compute_pose(sensors)
             self.viewer.update_hand(pose)
             sensors = self.replay.data[frame]["sensors"]
 
