@@ -10,6 +10,8 @@ from replay_controller import ReplayController
 from hand_pose_estimator import HandPoseEstimator
 from sensor_plot_widget import SensorPlotWidget
 import pyqtgraph as pg
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtCore import QUrl
 
 import numpy as np
 import pyqtgraph as pg
@@ -24,6 +26,11 @@ import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from pyqtgraph.opengl import MeshData
+
+import websockets
+import json
+import asyncio
+import threading
 
 
 class Hand3DViewer(gl.GLViewWidget):
@@ -254,11 +261,13 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
     pose_provider: Funktion oder Callable, das eine Pose zurückgibt.
     """
 
-    def __init__(self, pose_provider=None, update_hz=60):
+    def __init__(self, pose_provider=None, broadcaster=None, update_hz=60):
         super().__init__()
 
         self.setWindowTitle("Hand Tracking 3D")
         self.resize(900, 700)
+
+        self.send_data = broadcaster
 
         self.logger = None
         self.replay = None
@@ -286,7 +295,10 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         central_widget.setLayout(main_layout)
 
         # === 3D Viewer ===
-        self.viewer = Hand3DViewer()
+        #self.viewer = Hand3DViewer()
+        self.viewer = QWebEngineView()
+        self.viewer.load(QUrl(f"http://localhost:8000/viewer.html"))
+        #self.viewer.load(QUrl(f"http://www.google.com"))
 
         # === Debug Button ===
         self.debug_button = QtWidgets.QPushButton("Start Logging")
@@ -380,12 +392,21 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
         # -------- LIVE --------
         if config.MODE == "live":
             if self.pose_provider:
-                pose = self.pose_provider()
-                
+                sensors = self.sensor_values
+                pose, angles = self.pose_provider()
                 if pose:
-                    self.viewer.update_hand(pose)
+                    data = {
+                        "sensors": {
+                            "euler": sensors["euler"]
+                        },
+                        "angles": angles
+                            }
+                    try:
+                        self.send_data(data)
+                    except RuntimeError:
+                        pass
             
-            sensors = self.sensor_values
+            
             if sensors:
                 # --- Live Buffer füllen ---
                 self.live_buffer["gyro_x"].append(sensors["gyro"][0])
@@ -425,7 +446,16 @@ class HandTrackingWindow(QtWidgets.QMainWindow):
 
             sensors = self.replay.get_current_sensors()
             pose,angles = self.estimator.compute_pose(sensors)
-            self.viewer.update_hand(pose)
+            data = {
+                "sensors": {
+                    "euler": sensors.get("euler")
+                },
+                "angles": angles
+                    }
+            try:
+                self.send_data(data)
+            except RuntimeError:
+                pass
             sensors = self.replay.data[frame]["sensors"]
 
             # Gyro & Accel aktualisieren
