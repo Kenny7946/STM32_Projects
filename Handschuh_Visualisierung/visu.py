@@ -1,20 +1,41 @@
 import sys
+import threading
+import http.server
+import socketserver
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtCore import QUrl
+import mimetypes
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl
 
-class Window(QMainWindow):
-    def __init__(self):
-        super().__init__()
+PORT = 8000
 
-        self.browser = QWebEngineView()
-        self.setCentralWidget(self.browser)
+# Sicherstellen, dass .js als JavaScript ausgeliefert wird
+mimetypes.add_type('application/javascript', '.js')
 
-        path = os.path.abspath("viewer.html")
-        self.browser.load(QUrl.fromLocalFile(path))
+# HTTP-Handler
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):
+        # Debug-Ausgabe optional
+        print(format % args)
 
+# Server starten
+httpd = socketserver.TCPServer(("", PORT), Handler)
+
+def serve():
+    print(f"Serving at port {PORT}")
+    httpd.serve_forever()
+
+threading.Thread(target=serve, daemon=True).start()
+
+# PyQt App
 app = QApplication(sys.argv)
-window = Window()
+window = QMainWindow()
+browser = QWebEngineView()
+window.setCentralWidget(browser)
+
+# Lade HTML über HTTP, nicht file://
+browser.load(QUrl(f"http://localhost:{PORT}/viewer.html"))
+
 window.show()
-sys.exit(app.exec_())
+sys.exit(app.exec())
