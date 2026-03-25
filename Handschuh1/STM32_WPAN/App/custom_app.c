@@ -90,6 +90,12 @@ static void write_float_to_buffer(uint8_t *buffer, uint16_t *index, float value)
 
 void myTask(void)
 {
+	/*static uint16_t index = 0;
+	UpdateCharData[0] = index++;
+	Custom_Writechar_Update_Char();
+	UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
+	return;*/
+
     uint16_t idx = 0;
 
     // --- ADC Werte ---
