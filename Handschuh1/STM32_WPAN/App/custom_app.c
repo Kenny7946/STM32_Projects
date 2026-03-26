@@ -98,6 +98,10 @@ void myTask(void)
 
     uint16_t idx = 0;
 
+
+
+    printf("Hallo123\r\n");
+
     // --- ADC Werte ---
     UpdateCharData[idx++] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
     UpdateCharData[idx++] = (uint8_t)(adc_values[0] & 0xFF);
