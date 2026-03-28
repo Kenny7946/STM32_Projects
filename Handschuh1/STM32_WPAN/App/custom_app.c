@@ -100,7 +100,12 @@ void myTask(void)
 
 
 
-    printf("Hallo123\r\n");
+    printf("ADC: [%5u | %5u | %5u | %5u | %5u]\r\n",
+           adc_values[0],
+           adc_values[1],
+           adc_values[2],
+           adc_values[3],
+           adc_values[4]);
 
     // --- ADC Werte ---
     UpdateCharData[idx++] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
