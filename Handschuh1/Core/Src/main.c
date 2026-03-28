@@ -54,9 +54,14 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-#define SLAVE_ADDR 0x28   // Beispieladresse
 
 volatile uint16_t adc_values[5];
+
+bno055_dev_t bno1 = {&hi2c1, 0x28};
+bno055_dev_t bno2 = {&hi2c1, 0x29};
+bno055_dev_t bno3 = {&hi2c3, 0x28};
+bno055_dev_t bno4 = {&hi2c3, 0x29};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -137,21 +142,16 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
-	  if (HAL_I2C_IsDeviceReady(&hi2c1, SLAVE_ADDR << 1, 3, 100) == HAL_OK)
-		printf("Slave antwortet\r\n");
-	else
-		printf("Kein Geraet gefunden\r\n");
+  if (HAL_I2C_IsDeviceReady(&hi2c1, 0x28 << 1, 3, 100) == HAL_OK)
+	printf("Slave antwortet\r\n");
+  else
+	printf("Kein Geraet gefunden\r\n");
 
-	    char *msg = "TEST\r\n";
-	    HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+  bno055_init_dev(&bno1);
+  bno055_init_dev(&bno2);
 
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 5);
 
-
-	bno055_assignI2C(&hi2c1);
-	bno055_setup();
-	bno055_setOperationModeNDOF();
-
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 5);
   /* USER CODE END 2 */
 
   /* Init code for STM32_WPAN */
@@ -162,7 +162,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    MX_APPE_Process();
+	MX_APPE_Process();
 
     /* USER CODE BEGIN 3 */
   }

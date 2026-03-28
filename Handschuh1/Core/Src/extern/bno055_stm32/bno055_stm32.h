@@ -17,6 +17,12 @@
 
 extern I2C_HandleTypeDef *_bno055_i2c_port;
 
+void bno055_assignId(uint16_t id);
+
+void bno055_getAllData(bno055_dev_t *dev, bno055_data_t *out);
+
+void bno055_init_dev(bno055_dev_t *dev);
+
 void bno055_assignI2C(I2C_HandleTypeDef *hi2c_device);
 
 void bno055_delay(int time);

@@ -74,6 +74,7 @@ uint8_t NotifyCharData[512];
 uint16_t Connection_Handle;
 /* USER CODE BEGIN PV */
 extern volatile uint16_t adc_values[2];
+extern bno055_dev_t bno1, bno2, bno3, bno4;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,17 +99,20 @@ void myTask(void)
 
     uint16_t idx = 0;
 
+    bno055_data_t data;
+    //bno055_getAllData(&bno1, &data);
+    bno055_getAllData(&bno1, &data);
+    printf("Heading: %lf\r\n",data.heading);
+    //bno055_getAllData(&bno2, &data);
+    //bno055_getAllData(&bno3, &data);
+    //bno055_getAllData(&bno4, &data);
 
 
-    printf("ADC: [%5u | %5u | %5u | %5u | %5u]\r\n",
-           adc_values[0],
-           adc_values[1],
-           adc_values[2],
-           adc_values[3],
-           adc_values[4]);
+
+
 
     // --- ADC Werte ---
-    UpdateCharData[idx++] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
+    /*UpdateCharData[idx++] = (uint8_t)((adc_values[0] >> 8) & 0xFF);
     UpdateCharData[idx++] = (uint8_t)(adc_values[0] & 0xFF);
 
     UpdateCharData[idx++] = (uint8_t)((adc_values[1] >> 8) & 0xFF);
@@ -130,6 +134,8 @@ void myTask(void)
     bno055_vector_t accel      = bno055_getVectorAccelerometer();
     bno055_vector_t mag        = bno055_getVectorMagnetometer();
     bno055_vector_t linAccel   = bno055_getVectorLinearAccel();
+
+
 
     // --- Alle Werte als float in Buffer schreiben ---
     write_float_to_buffer(UpdateCharData, &idx, (float)euler.x);
@@ -154,7 +160,7 @@ void myTask(void)
 
     write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.x);
     write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.y);
-    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.z);
+    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.z);*/
 
     // --- BLE senden ---
     Custom_Writechar_Update_Char();

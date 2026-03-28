@@ -16,7 +16,7 @@
 
 #define BNO055_I2C_ADDR_HI 0x29
 #define BNO055_I2C_ADDR_LO 0x28
-#define BNO055_I2C_ADDR    BNO055_I2C_ADDR_LO
+//#define BNO055_I2C_ADDR    BNO055_I2C_ADDR_LO
 
 #define BNO055_READ_TIMEOUT 100
 #define BNO055_WRITE_TIMEOUT 10
@@ -235,6 +235,31 @@ typedef struct {
   uint8_t z_sign;
 } bno055_axis_map_t;
 
+typedef struct __I2C_HandleTypeDef I2C_HandleTypeDef;
+
+typedef struct {
+    I2C_HandleTypeDef *i2c;
+    uint16_t address;   // 0x28 oder 0x29
+} bno055_dev_t;
+
+typedef struct {
+    double heading;
+    double roll;
+    double pitch;
+
+    double acc_x;
+    double acc_y;
+    double acc_z;
+
+    double gyro_x;
+    double gyro_y;
+    double gyro_z;
+
+    double mag_x;
+    double mag_y;
+    double mag_z;
+} bno055_data_t;
+
 typedef enum {
   BNO055_VECTOR_ACCELEROMETER = 0x08,  // Default: m/s²
   BNO055_VECTOR_MAGNETOMETER = 0x0E,   // Default: uT
@@ -273,6 +298,7 @@ enum bno055_axis_map_sign_t {
 void bno055_writeData(uint8_t reg, uint8_t data);
 void bno055_readData(uint8_t reg, uint8_t *data, uint8_t len);
 void bno055_delay(int time);
+
 
 void bno055_reset();
 bno055_opmode_t bno055_getOperationMode();
