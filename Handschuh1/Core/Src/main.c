@@ -149,6 +149,8 @@ int main(void)
 
   bno055_init_dev(&bno1);
   bno055_init_dev(&bno2);
+  bno055_init_dev(&bno3);
+  bno055_init_dev(&bno4);
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 5);
 

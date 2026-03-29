@@ -102,9 +102,9 @@ void myTask(void)
     double heading1 = 0, heading2 = 0;
 
     bno055_data_t data;
-    bno055_getAllData(&bno1, &data);
+    bno055_getAllData(&bno4, &data);
     heading1 = data.heading;
-    bno055_getAllData(&bno2, &data);
+    //bno055_getAllData(&bno2, &data);
     heading2 = data.heading;
     printf("Heading1: %lf\tHeading2: %lf\r\n",heading1, heading2);
     //bno055_getAllData(&bno2, &data);
