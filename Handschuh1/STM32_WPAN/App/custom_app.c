@@ -89,6 +89,109 @@ static void write_float_to_buffer(uint8_t *buffer, uint16_t *index, float value)
     *index += sizeof(float);
 }
 
+void bno055_testStatus(bno055_dev_t *dev)
+{
+    uint8_t selftest_reg;
+    uint8_t calib_reg;
+    uint8_t opr_mode;
+
+    /*
+     * Register:
+     * 0x35 -> Calibration Status
+     * 0x36 -> Self Test Result
+     * 0x3D -> Operation Mode
+     */
+
+
+    bno055_readData(0x35, &calib_reg, 1);
+    bno055_readData(0x36, &selftest_reg, 1);
+    bno055_readData(0x3D, &opr_mode, 1);
+
+
+    /*
+     * Decode selftest
+     */
+
+    uint8_t acc_test  = (selftest_reg >> 0) & 0x01;
+    uint8_t mag_test  = (selftest_reg >> 1) & 0x01;
+    uint8_t gyro_test = (selftest_reg >> 2) & 0x01;
+    uint8_t mcu_test  = (selftest_reg >> 3) & 0x01;
+
+    /*
+     * Decode calibration
+     */
+
+    uint8_t sys_cal   = (calib_reg >> 6) & 0x03;
+    uint8_t gyro_cal  = (calib_reg >> 4) & 0x03;
+    uint8_t accel_cal = (calib_reg >> 2) & 0x03;
+    uint8_t mag_cal   = (calib_reg >> 0) & 0x03;
+
+    /*
+     * Print raw values
+     */
+
+    printf("RAW_SELFTEST: 0x%02X\r\n", selftest_reg);
+    printf("RAW_CALIB   : 0x%02X\r\n", calib_reg);
+    printf("OPR_MODE    : 0x%02X\r\n", opr_mode);
+
+    /*
+     * Print decoded selftest
+     */
+
+    printf(
+        "SELFTEST -> MCU:%u GYRO:%u MAG:%u ACC:%u\r\n",
+        mcu_test,
+        gyro_test,
+        mag_test,
+        acc_test
+    );
+
+    /*
+     * Print decoded calibration
+     */
+
+    printf(
+        "CALIB -> SYS:%u GYRO:%u MAG:%u ACC:%u\r\n",
+        sys_cal,
+        gyro_cal,
+        mag_cal,
+        accel_cal
+    );
+
+    /*
+     * Helpful mode decode
+     */
+
+    switch(opr_mode)
+    {
+        case 0x00:
+            printf("MODE: CONFIGMODE\r\n");
+            break;
+
+        case 0x08:
+            printf("MODE: IMUPLUS\r\n");
+            break;
+
+        case 0x09:
+            printf("MODE: COMPASS\r\n");
+            break;
+
+        case 0x0B:
+            printf("MODE: NDOF_FMC_OFF\r\n");
+            break;
+
+        case 0x0C:
+            printf("MODE: NDOF\r\n");
+            break;
+
+        default:
+            printf("MODE: UNKNOWN\r\n");
+            break;
+    }
+
+    printf("\r\n");
+}
+
 void myTask(void)
 {
 	/*static uint16_t index = 0;
@@ -101,12 +204,43 @@ void myTask(void)
 
     double heading1 = 0, heading2 = 0;
 
+    HAL_Delay(10);
+
     bno055_data_t data;
-    bno055_getAllData(&bno4, &data);
-    heading1 = data.heading;
-    //bno055_getAllData(&bno2, &data);
-    heading2 = data.heading;
-    printf("Heading1: %lf\tHeading2: %lf\r\n",heading1, heading2);
+    bno055_getAllData(&bno3, &data);
+    printf(
+        "ACC_X %lf ACC_Y %lf ACC_Z %lf\t"
+        "GYRO_X %lf GYRO_Y %lf GYRO_Z %lf\t"
+        "MAG_X %lf MAG_Y %lf MAG_Z %lf\t"
+        "Heading: %lf\r\n",
+
+        data.acc_x,
+        data.acc_y,
+        data.acc_z,
+
+        data.gyro_x,
+        data.gyro_y,
+        data.gyro_z,
+
+        data.mag_x,
+        data.mag_y,
+        data.mag_z,
+
+        data.heading
+    );
+
+
+    //bno055_testStatus(&bno3);
+
+    /*printf(
+        "ADC0:%d ADC1:%d ADC2:%d ADC3:%d ADC4:%d\r\n",
+        adc_values[0],
+        adc_values[1],
+        adc_values[2],
+        adc_values[3],
+        adc_values[4]
+    );*/
+
     //bno055_getAllData(&bno2, &data);
     //bno055_getAllData(&bno3, &data);
     //bno055_getAllData(&bno4, &data);
