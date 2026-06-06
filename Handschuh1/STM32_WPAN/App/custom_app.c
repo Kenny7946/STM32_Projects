@@ -194,12 +194,6 @@ void bno055_testStatus(bno055_dev_t *dev)
 
 void myTask(void)
 {
-	/*static uint16_t index = 0;
-	UpdateCharData[0] = index++;
-	Custom_Writechar_Update_Char();
-	UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
-	return;*/
-
     uint16_t idx = 0;
 
     double heading1 = 0, heading2 = 0;
@@ -208,6 +202,7 @@ void myTask(void)
 
     bno055_data_t data;
     bno055_getAllData(&bno3, &data);
+
     printf(
         "ACC_X %lf ACC_Y %lf ACC_Z %lf\t"
         "GYRO_X %lf GYRO_Y %lf GYRO_Z %lf\t"
@@ -298,11 +293,19 @@ void myTask(void)
 
     write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.x);
     write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.y);
-    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.z);*/
+    write_float_to_buffer(UpdateCharData, &idx, (float)linAccel.z);
+
+    printf("EUL[%.2f %.2f %.2f] GRAV[%.2f %.2f %.2f] GYRO[%.2f %.2f %.2f] ACC[%.2f %.2f %.2f] MAG[%.2f %.2f %.2f] LIN[%.2f %.2f %.2f]\r\n",
+    euler.x, euler.y, euler.z,
+    gravity.x, gravity.y, gravity.z,
+    gyro.x, gyro.y, gyro.z,
+    accel.x, accel.y, accel.z,
+    mag.x, mag.y, mag.z,
+    linAccel.x, linAccel.y, linAccel.z);*/
 
     // --- BLE senden ---
     Custom_Writechar_Update_Char();
-    //Custom_Writechar_Send_Notification();
+    Custom_Writechar_Send_Notification();
 
     UTIL_SEQ_SetTask(1 << CFG_TASK_MY_TASK, CFG_SCH_PRIO_0);
 }

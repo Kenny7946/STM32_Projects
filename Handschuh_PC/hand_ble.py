@@ -11,7 +11,7 @@ class HandDataParser:
     Parst ein Paket vom STM32 Handschuh.
     """
 
-    EXPECTED_LENGTH = 86  # Byte
+    EXPECTED_LENGTH = 82  # Byte
 
     @staticmethod
     def parse(data: bytes) -> dict:
