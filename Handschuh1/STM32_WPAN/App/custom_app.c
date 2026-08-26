@@ -102,17 +102,25 @@ void myTask(void)
     double heading1 = 0, heading2 = 0;
 
     bno055_data_t data;
-    bno055_getAllData(&bno1, &data);
+    bno055_getAllData(&bno3, &data);
     heading1 = data.heading;
 
     //bno055_data_t data1;
     //bno055_getAllData(&bno3, &data1);
     //heading2 = data.heading;
 
-    printf("Heading1: %lf\tHeading2: %lf\r\n",heading1, heading2);
+    //printf("Heading1: %lf\tHeading2: %lf\r\n",heading1, heading2);
     //bno055_getAllData(&bno2, &data);
     //bno055_getAllData(&bno3, &data);
     //bno055_getAllData(&bno4, &data);
+
+    printf("ADC0: %u\tADC1: %u\tADC2: %u\tADC3: %u\tADC4: %u\t Heading: %lf\r\n",
+           adc_values[0],
+           adc_values[1],
+           adc_values[2],
+           adc_values[3],
+           adc_values[4],
+		   heading1);
 
 
 

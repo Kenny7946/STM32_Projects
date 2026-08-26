@@ -162,8 +162,8 @@ int main(void)
   else
 	printf("Kein Geraet gefunden\r\n");
 
-  bno055_init_dev(&bno1);
-  //bno055_init_dev(&bno3);
+  //bno055_init_dev(&bno1);
+  bno055_init_dev(&bno3);
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 5);
 
