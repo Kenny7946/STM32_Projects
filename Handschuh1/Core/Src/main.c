@@ -142,13 +142,28 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
+  if (HAL_I2C_IsDeviceReady(&hi2c3, 0x28 << 1, 3, 100) == HAL_OK)
+	printf("Slave antwortet\r\n");
+  else
+	printf("Kein Geraet gefunden\r\n");
+
   if (HAL_I2C_IsDeviceReady(&hi2c1, 0x28 << 1, 3, 100) == HAL_OK)
 	printf("Slave antwortet\r\n");
   else
 	printf("Kein Geraet gefunden\r\n");
 
+  if (HAL_I2C_IsDeviceReady(&hi2c3, 0x29 << 1, 3, 100) == HAL_OK)
+	printf("Slave antwortet\r\n");
+  else
+	printf("Kein Geraet gefunden\r\n");
+
+  if (HAL_I2C_IsDeviceReady(&hi2c1, 0x29 << 1, 3, 100) == HAL_OK)
+	printf("Slave antwortet\r\n");
+  else
+	printf("Kein Geraet gefunden\r\n");
+
   bno055_init_dev(&bno1);
-  bno055_init_dev(&bno2);
+  //bno055_init_dev(&bno3);
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_values, 5);
 
@@ -162,7 +177,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	MX_APPE_Process();
+    MX_APPE_Process();
 
     /* USER CODE BEGIN 3 */
   }
@@ -180,7 +195,7 @@ void SystemClock_Config(void)
 
   /** Macro to configure the PLL multiplication factor
   */
-  __HAL_RCC_PLL_PLLM_CONFIG(RCC_PLLM_DIV1);
+  __HAL_RCC_PLL_PLLM_CONFIG(RCC_PLLM_DIV2);
 
   /** Macro to configure the PLL clock source
   */
@@ -200,7 +215,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
+  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_10;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -220,7 +235,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -610,9 +625,9 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

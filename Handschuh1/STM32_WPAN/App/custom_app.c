@@ -104,8 +104,11 @@ void myTask(void)
     bno055_data_t data;
     bno055_getAllData(&bno1, &data);
     heading1 = data.heading;
-    bno055_getAllData(&bno2, &data);
-    heading2 = data.heading;
+
+    //bno055_data_t data1;
+    //bno055_getAllData(&bno3, &data1);
+    //heading2 = data.heading;
+
     printf("Heading1: %lf\tHeading2: %lf\r\n",heading1, heading2);
     //bno055_getAllData(&bno2, &data);
     //bno055_getAllData(&bno3, &data);
